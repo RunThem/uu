@@ -1,12 +1,12 @@
-CFLAGS=-std=c99 -g -Wall -Werror
-SRCS=$(wildcard *.c)
-OBJS=$(SRCS:.c=.o)
+test: uu.c uu.h test.c
+	$(CC) -o $@ $^ -Wall -Wextra -Werror -std=c99 -g
+	@./test
 
-test: $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
-	./test
+bench: uu.c uu.h ubench.h bench.c
+	$(CC) -o $@ $^ -Wall -Wextra -Werror -std=gnu99 -O3 -lm
+	@./bench
 
 clean:
-	rm -f test *.o
+	rm -f test bench *.o
 
-.PHONY: test clean
+.PHONY: test bench clean
