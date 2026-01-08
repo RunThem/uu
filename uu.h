@@ -86,7 +86,11 @@ extern "C" {
   do {                                                                                             \
     extern void __uu_vec_deinit(void*);                                                            \
                                                                                                    \
-    uu_vec_each(self, it){__VA_ARGS__};                                                            \
+    uu_vec_each(self, it) {                                                                        \
+      __VA_ARGS__;                                                                                 \
+                                                                                                   \
+      (void)it;                                                                                    \
+    };                                                                                             \
                                                                                                    \
     __uu_vec_deinit(self);                                                                         \
                                                                                                    \
@@ -608,7 +612,12 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   do {                                                                                             \
     extern void __uu_dict_deinit(void*);                                                           \
                                                                                                    \
-    uu_dict_each(self, key, void*, uptr){__VA_ARGS__};                                             \
+    uu_dict_each(self, key, void*, uptr) {                                                         \
+      __VA_ARGS__;                                                                                 \
+                                                                                                   \
+      (void)key;                                                                                   \
+      (void)uptr;                                                                                  \
+    };                                                                                             \
                                                                                                    \
     __uu_dict_deinit(self);                                                                        \
                                                                                                    \
