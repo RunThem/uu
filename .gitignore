@@ -151,3 +151,9 @@ compile_commands.json
 
 test
 bench
+
+perf.data
+perf.data.old
+perf.unfold
+perf.folded
+perf.svg
