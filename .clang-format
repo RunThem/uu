@@ -41,10 +41,6 @@ IndentWrappedFunctionNames: true
 
 InsertBraces: true
 InsertTrailingCommas: Wrapped
-IntegerLiteralSeparator:
-  Binary: 8
-  Decimal: 4
-  Hex: 2
 
 SpaceAroundPointerQualifiers: After
 SpaceInEmptyBlock: true
