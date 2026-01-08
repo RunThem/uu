@@ -551,6 +551,10 @@ void __uu_dict_dump(void* _self, uu_dict_dump_fn dump_fn) {
 
   printf("Dict = {len = %d, height = %d}\n", self->len, self->root->height);
 
+  if (!dump_fn) {
+    return;
+  }
+
   while (1) {
     if (node) {
       sub_index = p_nbl ? p_nbl->i : 0;
