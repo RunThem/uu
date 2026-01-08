@@ -566,8 +566,14 @@ extern "C" {
  */
 #define uu_dict(K, V) __typeof__(K*)
 
+#define uu_cmp_fn_def(type, x, y, ...)                                                             \
+  int cmp_fn_##type(const void* _##x, const void* _##y) {                                          \
+    type x = *(type*)_##x, y = *(type*)_##y;                                                       \
+                                                                                                   \
+    return __VA_ARGS__;                                                                            \
+  }
 
-typedef int (*uu_dict_cmp_fn)(const void* k1, const void* k2);
+typedef int (*uu_dict_cmp_fn)(const void* x, const void* y);
 typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
 
 /**
