@@ -235,14 +235,25 @@ static inline void
   })
 
 uu_node_mut_t __uu_dict_remove_left_and_right(uu_dict_mut_t self, uu_node_mut_t node) {
-  uu_node_mut_t onode = node, parent, left, child;
+  uu_node_mut_t onode = node, parent, tmp, child;
+  const int64_t diff  = lh(node) - rh(node);
 
-  node = node->right;
-  while ((left = node->left)) {
-    node = left;
+  if (diff > 0) {
+    node = node->left;
+    while ((tmp = node->right)) {
+      node = tmp;
+    }
+
+    child = node->left;
+  } else {
+    node = node->right;
+    while ((tmp = node->left)) {
+      node = tmp;
+    }
+
+    child = node->right;
   }
 
-  child  = node->right;
   parent = node->parent;
 
   if (child) {
@@ -260,10 +271,19 @@ uu_node_mut_t __uu_dict_remove_left_and_right(uu_dict_mut_t self, uu_node_mut_t 
   node->height = onode->height;
 
   __uu_dict_child_replace(self, onode->parent, onode, node);
-  onode->left->parent = node;
 
-  if (onode->right) {
+  if (diff > 0) {
     onode->right->parent = node;
+
+    if (onode->left) {
+      onode->left->parent = node;
+    }
+  } else {
+    onode->left->parent = node;
+
+    if (onode->right) {
+      onode->right->parent = node;
+    }
   }
 
   return parent;
