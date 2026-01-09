@@ -344,6 +344,7 @@ void* __uu_dict_init(uint32_t ksize, uu_dict_cmp_fn cmp_fn) {
   self->ksize  = ksize;
   self->cmp_fn = cmp_fn;
   self->len    = 0;
+  self->root = self->iter = NULL;
 
   return self;
 
