@@ -200,6 +200,42 @@ extern "C" {
   })
 
 /**
+ * ::Vec<T>::remove(self, i) -> T
+ * ::Vec<T>::remove_head(self) -> T
+ * ::Vec<T>::remove_tail(self) -> T
+ *
+ * ```c
+  {
+    uu_vec(int) v = uu_vec_init(v);
+
+    uu_vec_insert_tail(v, 0);  // {0}
+    uu_vec_insert_tail(v, 1);  // {0, 1}
+    uu_vec_insert_tail(v, 2);  // {0, 1, 2}
+    assert(3 == uu_vec_len(v));
+
+    assert(1 == uu_vec_remove(v, 1));    // {0, 2}
+    assert(2 == uu_vec_remove_tail(v));  // {0}
+    assert(0 == uu_vec_remove_head(v));  // {}
+    assert(0 == uu_vec_len(v));
+  }
+ * ```
+ */
+#define uu_vec_remove_head(self) uu_vec_remove(self, 0)
+#define uu_vec_remove_tail(self) uu_vec_remove(self, uu_vec_len(self) - 1)
+#define uu_vec_remove(self, _idx)                                                                  \
+  ({                                                                                               \
+    extern void* __uu_vec_at(void*, uint32_t);                                                     \
+    extern void __uu_vec_remove(void*, uint32_t);                                                  \
+                                                                                                   \
+    uint32_t __idx__          = _idx;                                                              \
+    __typeof__(*self) __val__ = *(__typeof__(self))__uu_vec_at((void*)self, __idx__);              \
+                                                                                                   \
+    __uu_vec_remove((void*)self, __idx__);                                                         \
+                                                                                                   \
+    __val__;                                                                                       \
+  })
+
+/**
  * ::Vec<T>::insert(self, i, val) -> !
  * ::Vec<T>::insert_head(self, val) -> !
  * ::Vec<T>::insert_tail(self, val) -> !
@@ -236,38 +272,6 @@ extern "C" {
     __typeof__(self) __mut__  = (__typeof__(self))__uu_vec_insert((void*)self, __idx__);           \
                                                                                                    \
     *__mut__ = __val__;                                                                            \
-  } while (0)
-
-/**
- * ::Vec<T>::remove(self, i) -> !
- * ::Vec<T>::remove_head(self) -> !
- * ::Vec<T>::remove_tail(self) -> !
- *
- * ```c
-  {
-    uu_vec(int) v = uu_vec_init(v);
-
-    uu_vec_insert_tail(v, 0);  // {0}
-    uu_vec_insert_tail(v, 1);  // {0, 1}
-    uu_vec_insert_tail(v, 2);  // {0, 1, 2}
-    assert(3 == uu_vec_len(v));
-
-    uu_vec_remove(v, 1);    // {0, 2}
-    uu_vec_remove_tail(v);  // {0}
-    uu_vec_remove_head(v); // {}
-    assert(0 == uu_vec_len(v));
-  }
- * ```
- */
-#define uu_vec_remove_head(self) uu_vec_remove(self, 0)
-#define uu_vec_remove_tail(self) uu_vec_remove(self, uu_vec_len(self) - 1)
-#define uu_vec_remove(self, _idx)                                                                  \
-  do {                                                                                             \
-    extern void __uu_vec_remove(void*, uint32_t);                                                  \
-                                                                                                   \
-    uint32_t __idx__ = _idx;                                                                       \
-                                                                                                   \
-    __uu_vec_remove((void*)self, __idx__);                                                         \
   } while (0)
 
 /**
