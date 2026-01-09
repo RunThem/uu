@@ -534,23 +534,16 @@ err0:
   return !!0;
 }
 
+#define NODE_LEFT  0
+#define NODE_RIGHT 1
+
 struct uu_nbl_t;
 typedef struct uu_nbl_t* uu_nbl_mut_t;
 typedef const struct uu_nbl_t* uu_nbl_ref_t;
 typedef struct uu_nbl_t {
   uu_node_ref_t node;
-  int i;
+  int i; /* backtracking point */
 } uu_nbl_t;
-
-void __uu_dict_nbl_put(uu_nbl_mut_t nbl, uu_nbl_mut_t* top, uu_nbl_mut_t* bottom) {
-  if (*top - *bottom < UU_DICT_NBL_STACK_MAX) {
-    (*(*top)++) = *nbl;
-  }
-}
-
-uu_nbl_mut_t __uu_dict_nbl_pop(uu_nbl_mut_t* top, uu_nbl_mut_t* bottom) {
-  return *top > *bottom ? --*top : NULL;
-}
 
 void __uu_dict_node_dump(uu_node_ref_t node, uu_dict_dump_fn dump_fn) {
   uu_node_ref_t parent = node->parent;
@@ -558,7 +551,7 @@ void __uu_dict_node_dump(uu_node_ref_t node, uu_dict_dump_fn dump_fn) {
     printf("%c: ", node == parent->left ? 'L' : 'R');
   }
 
-  dump_fn(&node->key[0], node->uptr);
+  dump_fn(node->key, node->uptr);
 
   printf("\n");
 }
@@ -566,8 +559,11 @@ void __uu_dict_node_dump(uu_node_ref_t node, uu_dict_dump_fn dump_fn) {
 void __uu_dict_dump(void* _self, uu_dict_dump_fn dump_fn) {
   uu_dict_mut_t self = (uu_dict_mut_t)_self;
   uu_node_ref_t node = self->root;
-  uu_nbl_t nbl, nbl_stack[UU_DICT_NBL_STACK_MAX] = {0};
-  uu_nbl_mut_t p_nbl = NULL, top = nbl_stack, bottom = nbl_stack;
+  uu_nbl_t nbl;
+
+  uu_vec(uu_nbl_t) stack = uu_vec_init(stack);
+  uu_nbl_t sentinel      = {NULL, -1};
+
   int level = 0, sub_index;
 
   assert(self);
@@ -580,27 +576,29 @@ void __uu_dict_dump(void* _self, uu_dict_dump_fn dump_fn) {
 
   while (1) {
     if (node) {
-      sub_index = p_nbl ? p_nbl->i : 0;
-      p_nbl     = NULL;
+      /* 获取回溯点 */
+      sub_index  = sentinel.i > -1 ? sentinel.i : NODE_LEFT;
+      sentinel.i = -1;
 
-      if ((!node->left && !node->right) || sub_index == 1) {
-        nbl.node = NULL;
-        nbl.i    = 0;
-        // nbl = (uu_nbl_t){NULL, 0};
+      if ((!node->left && !node->right) || sub_index == NODE_RIGHT) {
+        /* 叶子节点压栈空节点, 或者回溯到右子节点 */
+        nbl = (uu_nbl_t){NULL, NODE_LEFT};
+        uu_vec_insert_tail(stack, nbl);
       } else {
-        nbl.node = node;
-        nbl.i    = 1;
+        /* 非叶子节点, 压栈当前节点, 同时记录下一个回溯点位置, 其实就是右子节点 */
+        nbl = (uu_nbl_t){node, NODE_RIGHT};
+        uu_vec_insert_tail(stack, nbl);
       }
 
-      __uu_dict_nbl_put(&nbl, &top, &bottom);
+      level++; /* 缩进层级 */
 
-      level++;
+      /* 如果回溯位置索引为 0 */
       if (sub_index == 0) {
-        for (int i = 0; i < level; i++) {
+        for (int i = 1; i < level; i++) {
           if (i == level - 1) {
             printf("%-4s", "+---");
           } else {
-            printf("%-4s", nbl_stack[i - 1].node ? "|" : " ");
+            printf("%-4s", uu_vec_at(stack, i - 1).node ? "|" : " ");
           }
         }
 
@@ -609,13 +607,17 @@ void __uu_dict_dump(void* _self, uu_dict_dump_fn dump_fn) {
 
       node = sub_index == 0 ? node->left : node->right;
     } else {
-      p_nbl = __uu_dict_nbl_pop(&top, &bottom);
-      if (!p_nbl) {
+      /* 栈为空, 回溯结束 */
+      if (uu_vec_is_empty(stack)) {
         break;
-      };
+      }
 
-      node = p_nbl->node;
+      /* 回溯节点 */
+      sentinel = uu_vec_remove_tail(stack);
+      node     = sentinel.node;
       level--;
     }
   }
+
+  uu_vec_deinit(stack);
 };
