@@ -414,13 +414,14 @@ err0:
   return NULL;
 }
 
-int __uu_dict_remove(void* _self, void* key) {
+void* __uu_dict_remove(void* _self, void* key) {
   uu_dict_mut_t self = (uu_dict_mut_t)_self;
   uu_node_mut_t node = self->root, parent;
   int result         = 0;
+  void* uptr         = NULL;
 
   assert(self);
-  uu_chk_if(self->len == 0, !0);
+  uu_chk_if(self->len == 0, NULL);
 
   while ((node)) {
     result = self->cmp_fn(key, &node->key[0]);
@@ -436,6 +437,7 @@ int __uu_dict_remove(void* _self, void* key) {
   parent = ((node->left && node->right) ? __uu_dict_remove_left_and_right :
                                           __uu_dict_remove_left_or_right)(self, node);
 
+  uptr = node->uptr;
   UU_FREE(node);
 
   if (parent) {
@@ -444,10 +446,10 @@ int __uu_dict_remove(void* _self, void* key) {
 
   self->len--;
 
-  return !0;
+  return uptr;
 
 err0:
-  return !!0;
+  return NULL;
 }
 
 void* __uu_dict_insert(void* _self, void* key, void* uptr) {

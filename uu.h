@@ -716,7 +716,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   })
 
 /**
- * ::Dict<K, V = void*>::remove(self, K) -> bool
+ * ::Dict<K, V = void*>::remove(self, K) -> V
  *
  * ```c
   {
@@ -728,7 +728,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
     uu_dict_insert(d, 4, (void*)0x44);
     uu_dict_insert(d, 5, (void*)0x55);
 
-    int result = uu_dict_remove(d, 3);
+    void* result = uu_dict_remove(d, 3);
     assert(result);
 
     result = uu_dict_remove(d, 3);
@@ -747,12 +747,11 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
  */
 #define uu_dict_remove(self, _key)                                                                 \
   ({                                                                                               \
-    extern int __uu_dict_remove(void*, void*);                                                     \
+    extern void* __uu_dict_remove(void*, void*);                                                   \
                                                                                                    \
     __typeof__(*self) __key__ = _key;                                                              \
-    int __result__            = __uu_dict_remove((void*)self, (void*)&__key__);                    \
                                                                                                    \
-    __result__;                                                                                    \
+    __uu_dict_remove((void*)self, (void*)&__key__);                                                \
   })
 
 /**
