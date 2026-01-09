@@ -353,8 +353,31 @@ err0:
 
 void __uu_dict_deinit(void* _self) {
   uu_dict_mut_t self = (uu_dict_mut_t)_self;
+  uu_node_mut_t node = NULL, head = self->root, tail = self->root;
 
   assert(self);
+
+  while (head) {
+    node = head;
+
+    if (node->left) {
+      tail->parent = node->left;
+      tail         = tail->parent;
+      tail->parent = NULL;
+    }
+
+    if (node->right) {
+      tail->parent = node->right;
+      tail         = tail->parent;
+      tail->parent = NULL;
+    }
+
+    head = head->parent;
+
+    UU_FREE(node);
+  }
+
+  UU_FREE(self);
 }
 
 uint32_t __uu_dict_len(void* _self) {
