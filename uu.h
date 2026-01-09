@@ -52,7 +52,7 @@ extern "C" {
   ({                                                                                               \
     extern void* __uu_vec_init(uint32_t);                                                          \
                                                                                                    \
-    self = (void*)__uu_vec_init(sizeof(*self));                                                    \
+    self = (__typeof__(self))__uu_vec_init(sizeof(*self));                                         \
                                                                                                    \
     self;                                                                                          \
   })
@@ -92,7 +92,7 @@ extern "C" {
       (void)it;                                                                                    \
     };                                                                                             \
                                                                                                    \
-    __uu_vec_deinit(self);                                                                         \
+    __uu_vec_deinit((void*)self);                                                                  \
                                                                                                    \
     self = NULL;                                                                                   \
   } while (0)
@@ -114,7 +114,7 @@ extern "C" {
   ({                                                                                               \
     extern uint32_t __uu_vec_len(void*);                                                           \
                                                                                                    \
-    __uu_vec_len(self);                                                                            \
+    __uu_vec_len((void*)self);                                                                     \
   })
 
 /**
@@ -134,7 +134,7 @@ extern "C" {
   ({                                                                                               \
     extern uint32_t __uu_vec_len(void*);                                                           \
                                                                                                    \
-    0 == __uu_vec_len(self);                                                                       \
+    0 == __uu_vec_len((void*)self);                                                                \
   })
 
 /**
@@ -162,7 +162,7 @@ extern "C" {
                                                                                                    \
     uint32_t __idx__          = _idx;                                                              \
     __typeof__(*self) __val__ = _val;                                                              \
-    __typeof__(self) __mut__  = __uu_vec_at(self, __idx__);                                        \
+    __typeof__(self) __mut__  = (__typeof__(self))__uu_vec_at((void*)self, __idx__);               \
                                                                                                    \
     *__mut__ = __val__;                                                                            \
   } while (0)
@@ -194,7 +194,7 @@ extern "C" {
     extern void* __uu_vec_at(void*, uint32_t);                                                     \
                                                                                                    \
     uint32_t __idx__         = _idx;                                                               \
-    __typeof__(self) __mut__ = __uu_vec_at(self, __idx__);                                         \
+    __typeof__(self) __mut__ = (__typeof__(self))__uu_vec_at((void*)self, __idx__);                \
                                                                                                    \
     *__mut__;                                                                                      \
   })
@@ -233,7 +233,7 @@ extern "C" {
                                                                                                    \
     uint32_t __idx__          = _idx;                                                              \
     __typeof__(*self) __val__ = _val;                                                              \
-    __typeof__(self) __mut__  = __uu_vec_insert(self, __idx__);                                    \
+    __typeof__(self) __mut__  = (__typeof__(self))__uu_vec_insert((void*)self, __idx__);           \
                                                                                                    \
     *__mut__ = __val__;                                                                            \
   } while (0)
@@ -267,7 +267,7 @@ extern "C" {
                                                                                                    \
     uint32_t __idx__ = _idx;                                                                       \
                                                                                                    \
-    __uu_vec_remove(self, __idx__);                                                                \
+    __uu_vec_remove((void*)self, __idx__);                                                         \
   } while (0)
 
 /**
@@ -297,13 +297,13 @@ extern "C" {
 #define uu_vec_each(self, it)                                                                      \
   {                                                                                                \
     extern void* __uu_vec_each(void*, int);                                                        \
-    (void)__uu_vec_each(self, 1);                                                                  \
+    (void)__uu_vec_each((void*)self, 1);                                                           \
   };                                                                                               \
                                                                                                    \
   for (__typeof__(*self) it = {0}; ({                                                              \
          extern void* __uu_vec_each(void*, int);                                                   \
                                                                                                    \
-         __typeof__(it)* __ref__ = __uu_vec_each(self, 2);                                         \
+         __typeof__(self) __ref__ = (__typeof__(self))__uu_vec_each((void*)self, 2);               \
                                                                                                    \
          it = __ref__ ? *__ref__ : it;                                                             \
                                                                                                    \
@@ -343,7 +343,7 @@ extern "C" {
   for (__typeof__(*self) it = {0}; ({                                                              \
          extern void* __uu_vec_each(void*, int);                                                   \
                                                                                                    \
-         __typeof__(it)* __ref__ = __uu_vec_each(self, 4);                                         \
+         __typeof__(self) __ref__ = (__typeof__(self))__uu_vec_each((void*)self, 4);               \
                                                                                                    \
          it = __ref__ ? *__ref__ : it;                                                             \
                                                                                                    \
@@ -472,10 +472,11 @@ extern "C" {
   do {                                                                                             \
     extern void* __uu_vec_each(void*, int);                                                        \
                                                                                                    \
-    (void)__uu_vec_each(self, 1);                                                                  \
+    (void)__uu_vec_each((void*)self, 1);                                                           \
                                                                                                    \
     __typeof__(self) __mut__ = NULL;                                                               \
-    for (__typeof__(*self) it = {0}; (__mut__ = __uu_vec_each(self, 2));) {                        \
+    for (__typeof__(*self) it = {0};                                                               \
+         (__mut__ = (__typeof__(self))__uu_vec_each((void*)self, 2));) {                           \
       it = *__mut__;                                                                               \
                                                                                                    \
       __VA_ARGS__                                                                                  \
@@ -596,7 +597,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   ({                                                                                               \
     extern void* __uu_dict_init(uint32_t, uu_dict_cmp_fn);                                         \
                                                                                                    \
-    self = (void*)__uu_dict_init(sizeof(*self), cmp_fn);                                           \
+    self = (__typeof__(self))__uu_dict_init(sizeof(*self), cmp_fn);                                \
                                                                                                    \
     self;                                                                                          \
   })
@@ -625,7 +626,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
       (void)uptr;                                                                                  \
     };                                                                                             \
                                                                                                    \
-    __uu_dict_deinit(self);                                                                        \
+    __uu_dict_deinit((void*)self);                                                                 \
                                                                                                    \
     self = NULL;                                                                                   \
   } while (0)
@@ -651,7 +652,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   ({                                                                                               \
     extern uint32_t __uu_dict_len(void*);                                                          \
                                                                                                    \
-    __uu_dict_len(self);                                                                           \
+    __uu_dict_len((void*)self);                                                                    \
   })
 
 /**
@@ -677,7 +678,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   ({                                                                                               \
     extern uint32_t __uu_dict_len(void*);                                                          \
                                                                                                    \
-    0 == __uu_dict_len(self);                                                                      \
+    0 == __uu_dict_len((void*)self);                                                               \
   })
 
 /**
@@ -707,7 +708,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
                                                                                                    \
     __typeof__(*self) __key__ = _key;                                                              \
                                                                                                    \
-    __uu_dict_at(self, (void*)&__key__);                                                           \
+    __uu_dict_at((void*)self, (void*)&__key__);                                                    \
   })
 
 /**
@@ -745,7 +746,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
     extern int __uu_dict_remove(void*, void*);                                                     \
                                                                                                    \
     __typeof__(*self) __key__ = _key;                                                              \
-    int __result__            = __uu_dict_remove(self, (void*)&__key__);                           \
+    int __result__            = __uu_dict_remove((void*)self, (void*)&__key__);                    \
                                                                                                    \
     __result__;                                                                                    \
   })
@@ -790,7 +791,8 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
     int __result__            = !!0;                                                               \
     void* __uptr__            = _uptr;                                                             \
     __typeof__(*self) __key__ = _key;                                                              \
-    __typeof__(self) __mut__  = __uu_dict_insert(self, (void*)&__key__, __uptr__);                 \
+    __typeof__(self) __mut__ =                                                                     \
+        (__typeof__(self))__uu_dict_insert((void*)self, (void*)&__key__, __uptr__);                \
                                                                                                    \
     if (__mut__) {                                                                                 \
       *__mut__   = __key__;                                                                        \
@@ -829,7 +831,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
 #define uu_dict_each(self, key, type, uptr)                                                        \
   {                                                                                                \
     extern int __uu_dict_each(void*, int, void* [2]);                                              \
-    (void)__uu_dict_each(self, !0, NULL);                                                          \
+    (void)__uu_dict_each((void*)self, !0, NULL);                                                   \
   }                                                                                                \
                                                                                                    \
   for (__typeof__(*self) key = {0}, *__key__ = &key; __key__; __key__ = NULL)                      \
@@ -837,7 +839,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
            extern int __uu_dict_each(void*, int, void* [2]);                                       \
                                                                                                    \
            __typeof__(self) __out__[2] = {0};                                                      \
-           int __result__              = __uu_dict_each(self, !!0, (void**)&__out__);              \
+           int __result__              = __uu_dict_each((void*)self, !!0, (void**)&__out__);       \
                                                                                                    \
            if (__result__) {                                                                       \
              key  = *__out__[0];                                                                   \

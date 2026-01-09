@@ -43,7 +43,7 @@ typedef struct uu_vec_t {
 void* __uu_vec_init(uint32_t itsize) {
   uu_vec_mut_t self = NULL;
 
-  self = UU_MALLOC(sizeof(uu_vec_t));
+  self = (uu_vec_mut_t)UU_MALLOC(sizeof(uu_vec_t));
   uu_end_if(!self, err0);
 
   self->items = UU_MALLOC(itsize * 16);
@@ -64,7 +64,7 @@ err0:
 }
 
 void __uu_vec_deinit(void* _self) {
-  uu_vec_mut_t self = _self;
+  uu_vec_mut_t self = (uu_vec_mut_t)_self;
 
   assert(self);
 
@@ -73,7 +73,7 @@ void __uu_vec_deinit(void* _self) {
 }
 
 uint32_t __uu_vec_len(void* _self) {
-  uu_vec_mut_t self = _self;
+  uu_vec_mut_t self = (uu_vec_mut_t)_self;
 
   assert(self);
 
@@ -81,7 +81,7 @@ uint32_t __uu_vec_len(void* _self) {
 }
 
 void* __uu_vec_at(void* _self, uint32_t idx) {
-  uu_vec_mut_t self = _self;
+  uu_vec_mut_t self = (uu_vec_mut_t)_self;
 
   assert(self);
   assert(idx < self->len);
@@ -90,7 +90,7 @@ void* __uu_vec_at(void* _self, uint32_t idx) {
 }
 
 void* __uu_vec_insert(void* _self, uint32_t idx) {
-  uu_vec_mut_t self = _self;
+  uu_vec_mut_t self = (uu_vec_mut_t)_self;
 
   assert(self);
   assert(idx <= self->len);
@@ -117,7 +117,7 @@ err0:
 }
 
 void __uu_vec_remove(void* _self, uint32_t idx) {
-  uu_vec_mut_t self = _self;
+  uu_vec_mut_t self = (uu_vec_mut_t)_self;
 
   assert(self);
   assert(idx < self->len);
@@ -130,7 +130,7 @@ void __uu_vec_remove(void* _self, uint32_t idx) {
 }
 
 void* __uu_vec_each(void* _self, int ev) {
-  uu_vec_mut_t self = _self;
+  uu_vec_mut_t self = (uu_vec_mut_t)_self;
 
   assert(self);
 
@@ -338,7 +338,7 @@ void* __uu_dict_init(uint32_t ksize, uu_dict_cmp_fn cmp_fn) {
 
   assert(cmp_fn);
 
-  self = UU_MALLOC(sizeof(uu_dict_t));
+  self = (uu_dict_mut_t)UU_MALLOC(sizeof(uu_dict_t));
   uu_end_if(!self, err0);
 
   self->ksize  = ksize;
@@ -352,13 +352,13 @@ err0:
 }
 
 void __uu_dict_deinit(void* _self) {
-  uu_dict_mut_t self = _self;
+  uu_dict_mut_t self = (uu_dict_mut_t)_self;
 
   assert(self);
 }
 
 uint32_t __uu_dict_len(void* _self) {
-  uu_dict_mut_t self = _self;
+  uu_dict_mut_t self = (uu_dict_mut_t)_self;
 
   assert(self);
 
@@ -366,7 +366,7 @@ uint32_t __uu_dict_len(void* _self) {
 }
 
 void* __uu_dict_at(void* _self, void* key) {
-  uu_dict_mut_t self = _self;
+  uu_dict_mut_t self = (uu_dict_mut_t)_self;
   uu_node_mut_t node = self->root;
   int result         = 0;
 
@@ -391,7 +391,7 @@ err0:
 }
 
 int __uu_dict_remove(void* _self, void* key) {
-  uu_dict_mut_t self = _self;
+  uu_dict_mut_t self = (uu_dict_mut_t)_self;
   uu_node_mut_t node = self->root, parent;
   int result         = 0;
 
@@ -427,7 +427,7 @@ err0:
 }
 
 void* __uu_dict_insert(void* _self, void* key, void* uptr) {
-  uu_dict_mut_t self  = _self;
+  uu_dict_mut_t self  = (uu_dict_mut_t)_self;
   uu_node_mut_t *link = &self->root, parent = NULL, node;
   int result = 0;
 
@@ -441,7 +441,7 @@ void* __uu_dict_insert(void* _self, void* key, void* uptr) {
     link = (result < 0) ? &parent->left : &parent->right;
   }
 
-  node = UU_MALLOC(sizeof(uu_node_t) + self->ksize);
+  node = (uu_node_mut_t)UU_MALLOC(sizeof(uu_node_t) + self->ksize);
 
   node->parent = parent;
   node->height = 1;
@@ -460,7 +460,7 @@ err0:
 }
 
 int __uu_dict_each(void* _self, int init, void* out[2]) {
-  uu_dict_mut_t self = _self;
+  uu_dict_mut_t self = (uu_dict_mut_t)_self;
   uu_node_mut_t iter, last;
 
   assert(self);
@@ -541,7 +541,7 @@ void __uu_dict_node_dump(uu_node_ref_t node, uu_dict_dump_fn dump_fn) {
 }
 
 void __uu_dict_dump(void* _self, uu_dict_dump_fn dump_fn) {
-  uu_dict_mut_t self = _self;
+  uu_dict_mut_t self = (uu_dict_mut_t)_self;
   uu_node_ref_t node = self->root;
   uu_nbl_t nbl, nbl_stack[UU_DICT_NBL_STACK_MAX] = {0};
   uu_nbl_mut_t p_nbl = NULL, top = nbl_stack, bottom = nbl_stack;
@@ -577,7 +577,7 @@ void __uu_dict_dump(void* _self, uu_dict_dump_fn dump_fn) {
           if (i == level - 1) {
             printf("%-4s", "+---");
           } else {
-            printf("%-4s", nbl_stack[i - 1].node != NULL ? "|" : " ");
+            printf("%-4s", nbl_stack[i - 1].node ? "|" : " ");
           }
         }
 
