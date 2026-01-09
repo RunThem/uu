@@ -143,6 +143,8 @@ void* __uu_vec_each(void* _self, int ev) {
 
     default: assert(0);
   }
+
+  return NULL;
 }
 
 /***************************************************************************************************
@@ -296,7 +298,7 @@ void __uu_dict_remove_rebalance(uu_dict_mut_t self, uu_node_mut_t node) {
 
     if (node->height != h) {
       node->height = h;
-    } else if (diff >= -1 && diff <= 1) {
+    } else if (diff >= -1 && diff <= -1) {
       break;
     }
 
@@ -414,6 +416,35 @@ err0:
   return NULL;
 }
 
+#ifdef UU_DICT_CHECK
+void __uu_dict_check(uu_node_mut_t root, uu_dict_cmp_fn cmp_fn) {
+  if (!root) {
+    return;
+  }
+
+  if (root->left) {
+    assert(cmp_fn(&root->key[0], &root->left->key[0]) > 0);
+  }
+
+  if (root->right) {
+    assert(cmp_fn(&root->key[0], &root->right->key[0]) < 0);
+  }
+
+  if (root->left && root->right) {
+    uint32_t l   = lh(root);
+    uint32_t r   = rh(root);
+    int64_t diff = (int64_t)l - (int64_t)r;
+    uint32_t max = l > r ? l : r;
+    assert(diff >= -1 && diff <= 1);
+    assert(root->height == max + 1);
+  }
+
+  __uu_dict_check(root->left, cmp_fn);
+  __uu_dict_check(root->right, cmp_fn);
+}
+
+#endif /* !UU_DICT_CHECK */
+
 void* __uu_dict_remove(void* _self, void* key) {
   uu_dict_mut_t self = (uu_dict_mut_t)_self;
   uu_node_mut_t node = self->root, parent;
@@ -422,6 +453,10 @@ void* __uu_dict_remove(void* _self, void* key) {
 
   assert(self);
   uu_chk_if(self->len == 0, NULL);
+
+#ifdef UU_DICT_CHECK
+  __uu_dict_check(self->root, self->cmp_fn);
+#endif
 
   while ((node)) {
     result = self->cmp_fn(key, &node->key[0]);
@@ -458,6 +493,10 @@ void* __uu_dict_insert(void* _self, void* key, void* uptr) {
   int result = 0;
 
   assert(self);
+
+#ifdef UU_DICT_CHECK
+  __uu_dict_check(self->root, self->cmp_fn);
+#endif
 
   while (link[0]) {
     parent = link[0];
@@ -551,7 +590,7 @@ typedef struct uu_nbl_t {
 void __uu_dict_node_dump(uu_node_ref_t node, uu_dict_dump_fn dump_fn) {
   uu_node_ref_t parent = node->parent;
   if (parent) {
-    printf("%c: ", node == parent->left ? 'L' : 'R');
+    printf("%c(%d): ", node == parent->left ? 'L' : 'R', node->height);
   }
 
   dump_fn(node->key, node->uptr);

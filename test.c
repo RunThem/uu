@@ -4,12 +4,22 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <time.h>
 
-int cmp_fn_int(const void* x, const void* y) {
-  int a = *(int*)x;
-  int b = *(int*)y;
+const int COUNT = 10000;
 
-  return a - b;
+uu_cmp_fn_def(int, x, y, x - y);
+
+void shuffle(int* array, int len) {
+  srand(time(NULL));
+
+  for (int i = len - 1; i > 0; i--) {
+    int j = rand() % (i + 1);
+
+    int temp = array[i];
+    array[i] = array[j];
+    array[j] = temp;
+  }
 }
 
 void dump_fn_int(const void* _key, const void* _uptr) {
@@ -19,52 +29,70 @@ void dump_fn_int(const void* _key, const void* _uptr) {
   printf("[%d] = 0x%x", key, (int)(intptr_t)uptr);
 }
 
+void dict() {
+  printf("test(Dict<K, V = void*>) {\n");
+
+  int i                = 0;
+  int* array           = calloc(sizeof(int), COUNT);
+  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+
+  assert(d);
+  assert(uu_dict_is_empty(d));
+
+  for (i = 0; i < COUNT; i++) {
+    array[i] = i;
+  }
+
+  printf("  env init ok\n");
+
+  shuffle(array, COUNT);
+
+  for (i = 0; i < COUNT; i++) {
+    uu_dict_insert(d, array[i], (void*)(intptr_t)(array[i] * 3));
+  }
+
+  assert(COUNT == i);
+  assert(COUNT == uu_dict_len(d));
+  assert(!uu_dict_is_empty(d));
+
+  printf("  dict.insert ok\n");
+
+  shuffle(array, COUNT);
+
+  for (i = 0; i < COUNT; i++) {
+    assert((array[i] * 3) == (int)(intptr_t)uu_dict_at(d, array[i]));
+  }
+
+  assert(COUNT == i);
+  assert(COUNT == uu_dict_len(d));
+  assert(!uu_dict_is_empty(d));
+
+  printf("  dict.at ok\n");
+
+  shuffle(array, COUNT);
+
+  for (i = 0; i < COUNT; i++) {
+    assert((array[i] * 3) == (int)(intptr_t)uu_dict_remove(d, array[i]));
+  }
+
+  assert(COUNT == i);
+  assert(0 == uu_dict_len(d));
+  assert(uu_dict_is_empty(d));
+
+  printf("  dict.remove ok\n");
+
+  uu_dict_deinit(d);
+
+  free(array);
+
+  printf("}\n");
+
+  assert(!d);
+}
+
 int main() {
-  {
-    uu_vec(int) v = uu_vec_init(v);
 
-    assert(uu_vec_is_empty(v));
-
-    uu_vec_insert_tail(v, 1);
-    uu_vec_insert_tail(v, 2);
-    uu_vec_insert_tail(v, 3);
-    uu_vec_insert_tail(v, 4);
-    uu_vec_insert_tail(v, 5);
-    uu_vec_insert_tail(v, 6);
-    uu_vec_insert_tail(v, 7);
-
-    assert(7 == uu_dict_len(v));
-    assert(!uu_dict_is_empty(v));
-
-    uu_vec_remove_head(v);
-    uu_vec_remove_tail(v);
-    uu_vec_remove(v, 2);
-
-    uu_vec_deinit(v, { printf("[%d]\n", it); });
-  }
-
-  {
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
-
-    assert(uu_dict_is_empty(d));
-
-    uu_dict_insert(d, 1, (void*)(intptr_t)0x1);
-    uu_dict_insert(d, 2, (void*)(intptr_t)0x2);
-    uu_dict_insert(d, 3, (void*)(intptr_t)0x3);
-    uu_dict_insert(d, 4, (void*)(intptr_t)0x4);
-    uu_dict_insert(d, 5, (void*)(intptr_t)0x5);
-    uu_dict_insert(d, 6, (void*)(intptr_t)0x6);
-    uu_dict_insert(d, 7, (void*)(intptr_t)0x7);
-
-    assert(7 == uu_dict_len(d));
-    assert(!uu_dict_is_empty(d));
-
-    uu_dict_dump(d, dump_fn_int);
-
-    uu_dict_remove(d, 3);
-
-    uu_dict_deinit(d, { printf("[%d] = 0x%x\n", key, (int)(intptr_t)uptr); });
-  }
+  dict();
 
   return 0;
 }
