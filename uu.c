@@ -37,7 +37,7 @@ typedef struct uu_vec_t {
   uint32_t len;
   uint32_t cap;
   uint32_t idx;
-  void* items;
+  uint8_t* items;
 } uu_vec_t;
 
 void* __uu_vec_init(uint32_t itsize) {
@@ -46,7 +46,7 @@ void* __uu_vec_init(uint32_t itsize) {
   self = (uu_vec_mut_t)UU_MALLOC(sizeof(uu_vec_t));
   uu_end_if(!self, err0);
 
-  self->items = UU_MALLOC(itsize * 16);
+  self->items = (uint8_t*)UU_MALLOC(itsize * 16);
   uu_end_if(!self->items, err1);
 
   self->itsize = itsize;
@@ -86,7 +86,7 @@ void* __uu_vec_at(void* _self, uint32_t idx) {
   assert(self);
   assert(idx < self->len);
 
-  return at(idx);
+  return (self->items + self->itsize * (idx));
 }
 
 void* __uu_vec_insert(void* _self, uint32_t idx) {
@@ -97,7 +97,7 @@ void* __uu_vec_insert(void* _self, uint32_t idx) {
 
   /* resize */
   if (self->len == self->cap) {
-    void* items = realloc(self->items, 2 * self->cap * self->itsize);
+    uint8_t* items = (uint8_t*)UU_REALLOC(self->items, 2 * self->cap * self->itsize);
     uu_end_if(!items, err0);
 
     self->cap *= 2;
