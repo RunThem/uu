@@ -852,6 +852,72 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
            __result__;                                                                             \
          });)
 
+/**
+ * ::Dict<K, V = void*>::any_if(self, key, typeof(K), uptr, cond) -> bool
+ *
+ * ```c
+  {
+    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+
+    uu_dict_insert(d, 1, (void*)0x11);
+    uu_dict_insert(d, 2, (void*)0x22);
+    uu_dict_insert(d, 3, (void*)0x33);
+    uu_dict_insert(d, 4, (void*)0x44);
+    uu_dict_insert(d, 5, (void*)0x55);
+
+    int result = uu_dict_any_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)0x33);
+    assert(result);
+
+    result = uu_dict_any_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)0x66);
+    assert(!result);
+  }
+ * ```
+ */
+#define uu_dict_any_if(self, key, type, uptr, cond)                                                \
+  ({                                                                                               \
+    int __result__ = !!0;                                                                          \
+                                                                                                   \
+    uu_dict_each_if(self, key, type, uptr, cond) {                                                 \
+      __result__ = !0;                                                                             \
+      break;                                                                                       \
+    }                                                                                              \
+                                                                                                   \
+    __result__;                                                                                    \
+  })
+
+/**
+ * ::Dict<K, V = void*>::all_if(self, key, typeof(K), uptr, cond) -> bool
+ *
+ * ```c
+  {
+    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+
+    uu_dict_insert(d, 1, (void*)0x11);
+    uu_dict_insert(d, 2, (void*)0x22);
+    uu_dict_insert(d, 3, (void*)0x33);
+    uu_dict_insert(d, 4, (void*)0x44);
+    uu_dict_insert(d, 5, (void*)0x55);
+
+    int result = uu_dict_all_if(d, key, int*, uptr, uptr >= (int*)(intptr_t)0x11);
+    assert(result);
+
+    result = uu_dict_all_if(d, key, int*, uptr, uptr > (int*)(intptr_t)0x11);
+    assert(!result);
+  }
+ * ```
+ */
+#define uu_dict_all_if(self, key, type, uptr, cond)                                                \
+  ({                                                                                               \
+    int __result__ = !0;                                                                           \
+                                                                                                   \
+    uu_dict_each_if(self, key, type, uptr, !(cond)) {                                              \
+      __result__ = !!0;                                                                            \
+      break;                                                                                       \
+    }                                                                                              \
+                                                                                                   \
+    __result__;                                                                                    \
+  })
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
