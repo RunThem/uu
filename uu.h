@@ -138,9 +138,9 @@ extern "C" {
   })
 
 /**
- * ::Vec<T>::swap(self, i, val) -> !
- * ::Vec<T>::swap_head(self, val) -> !
- * ::Vec<T>::swap_tail(self, val) -> !
+ * ::Vec<T>::swap(self, idx: uint32_t, val: T) -> !
+ * ::Vec<T>::swap_head(self, val: T) -> !
+ * ::Vec<T>::swap_tail(self, val: T) -> !
  *
  * ```c
   {
@@ -168,7 +168,7 @@ extern "C" {
   } while (0)
 
 /**
- * ::Vec<T>::at(self, i) -> T
+ * ::Vec<T>::at(self, idx: uint32_t) -> T
  * ::Vec<T>::at_head(self) -> T
  * ::Vec<T>::at_tail(self) -> T
  *
@@ -200,7 +200,7 @@ extern "C" {
   })
 
 /**
- * ::Vec<T>::remove(self, i) -> T
+ * ::Vec<T>::remove(self, idx: uint32_t) -> T
  * ::Vec<T>::remove_head(self) -> T
  * ::Vec<T>::remove_tail(self) -> T
  *
@@ -236,9 +236,9 @@ extern "C" {
   })
 
 /**
- * ::Vec<T>::insert(self, i, val) -> !
- * ::Vec<T>::insert_head(self, val) -> !
- * ::Vec<T>::insert_tail(self, val) -> !
+ * ::Vec<T>::insert(self, idx: uint32_t, val: T) -> !
+ * ::Vec<T>::insert_head(self, val: T) -> !
+ * ::Vec<T>::insert_tail(self, val: T) -> !
  *
  * ```c
   {
@@ -608,6 +608,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
 
 /**
  * ::Dict<K, V = void*>::deinit(self) -> !
+ * ::Dict<K, V = void*>::deinit(self, ...) -> !
  *
  * ```c
   {
@@ -660,7 +661,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   })
 
 /**
- * ::Dict<K, V = void*>::len(self) -> uint32_t
+ * ::Dict<K, V = void*>::is_empty(self) -> bool
  *
  * ```c
   {
@@ -686,7 +687,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   })
 
 /**
- * ::Dict<K, V = void*>::at(self, K) -> V
+ * ::Dict<K, V = void*>::at(self, key: K) -> V
  *
  * ```c
   {
@@ -716,7 +717,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   })
 
 /**
- * ::Dict<K, V = void*>::remove(self, K) -> V
+ * ::Dict<K, V = void*>::remove(self, key: K) -> V
  *
  * ```c
   {
@@ -755,7 +756,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   })
 
 /**
- * ::Dict<K, V = void*>::insert(self, K) -> bool
+ * ::Dict<K, V = void*>::insert(self, key: K, uptr: V) -> bool
  *
  * ```c
   {
@@ -806,8 +807,8 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   })
 
 /**
- * ::Dict<K, V = void*>::each(self, key, typeof(K), uptr) -> Iter<K, V>
- * ::Dict<K, V = void*>::each_if(self, key, typeof(K), uptr) -> Iter<K, V>
+ * ::Dict<K, V = void*, U: V>::each(self, key, U, uptr) -> Iter<K, U>
+ * ::Dict<K, V = void*, U: V>::each_if(self, key, U, uptr) -> Iter<K, U>
  *
  * ```c
   {
@@ -853,7 +854,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
          });)
 
 /**
- * ::Dict<K, V = void*>::any_if(self, key, typeof(K), uptr, cond) -> bool
+ * ::Dict<K, V = void*, U: V>::any_if(self, key, U, uptr, cond) -> bool
  *
  * ```c
   {
@@ -886,7 +887,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   })
 
 /**
- * ::Dict<K, V = void*>::all_if(self, key, typeof(K), uptr, cond) -> bool
+ * ::Dict<K, V = void*, U: V>::all_if(self, key, U, uptr, cond) -> bool
  *
  * ```c
   {
