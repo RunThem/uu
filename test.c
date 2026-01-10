@@ -69,6 +69,16 @@ void dict() {
 
   printf("  dict.at ok\n");
 
+  i = 0;
+  uu_dict_each(d, key, int*, uptr) {
+    assert(key * 3 == (int)(intptr_t)uptr);
+    i++;
+  }
+
+  assert(COUNT == i);
+
+  printf("  dict.each ok\n");
+
   shuffle(array, COUNT);
 
   for (i = 0; i < COUNT; i++) {
