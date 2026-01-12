@@ -232,20 +232,15 @@ __uu_dict_fix(left, right, >);
 __uu_dict_fix(right, left, <);
 
 uu_node_mut_t __uu_dict_remove_left_and_right(uu_dict_mut_t self, uu_node_mut_t node) {
-  uu_node_mut_t onode = node, parent, tmp, child;
-  const int64_t diff  = lh(node) - rh(node);
+  uu_node_mut_t onode = node, parent, child;
 
-  if (diff > 0) {
-    node = node->left;
-    while ((tmp = node->right)) {
-      node = tmp;
+  if (lh(node) - rh(node) > 0) {
+    for (node = node->left; node->right; node = node->right) {
     }
 
     child = node->left;
   } else {
-    node = node->right;
-    while ((tmp = node->left)) {
-      node = tmp;
+    for (node = node->right; node->left; node = node->left) {
     }
 
     child = node->right;
@@ -269,37 +264,25 @@ uu_node_mut_t __uu_dict_remove_left_and_right(uu_dict_mut_t self, uu_node_mut_t 
 
   __uu_dict_child_replace(self, onode->parent, onode, node);
 
-  if (diff > 0) {
-    onode->right->parent = node;
-
-    if (onode->left) {
-      onode->left->parent = node;
-    }
-  } else {
+  if (onode->left) {
     onode->left->parent = node;
+  }
 
-    if (onode->right) {
-      onode->right->parent = node;
-    }
+  if (onode->right) {
+    onode->right->parent = node;
   }
 
   return parent;
 }
 
 uu_node_mut_t __uu_dict_remove_left_or_right(uu_dict_mut_t self, uu_node_mut_t node) {
-  uu_node_mut_t child, parent;
-
-  child = node->left;
-  if (!child) {
-    child = node->right;
-  }
-
-  parent = node->parent;
-  __uu_dict_child_replace(self, parent, node, child);
+  uu_node_mut_t child = node->left ? node->left : node->right, parent = node->parent;
 
   if (child) {
     child->parent = parent;
   }
+
+  __uu_dict_child_replace(self, parent, node, child);
 
   return parent;
 }
