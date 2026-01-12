@@ -193,46 +193,43 @@ static inline void height_set(uu_node_mut_t n) {
 
 static inline void
     __uu_dict_child_replace(uu_dict_mut_t self, uu_node_mut_t p, uu_node_mut_t o, uu_node_mut_t n) {
-  if (!p) {
-    self->root = n;
-  } else {
+  if (p) {
     *((p->left == o) ? &p->left : &p->right) = n;
+  } else {
+    self->root = n;
   }
 }
 
-#define __uu_dict_rotate(self, node, x, y)                                                         \
-  ({                                                                                               \
+#define __uu_dict_rotate(x, y)                                                                     \
+  static inline uu_node_mut_t __uu_dict_rotate_##x(uu_dict_mut_t self, uu_node_mut_t node) {       \
     uu_node_mut_t y = node->y, parent = node->parent;                                              \
-                                                                                                   \
     node->y = y->x;                                                                                \
     if (y->x)                                                                                      \
       y->x->parent = node;                                                                         \
-                                                                                                   \
     y->x      = node;                                                                              \
     y->parent = parent;                                                                            \
-                                                                                                   \
     __uu_dict_child_replace(self, parent, node, y);                                                \
-    node->parent = y;                                                                              \
-                                                                                                   \
-    y;                                                                                             \
-  })
+    return (node->parent = y);                                                                     \
+  }
 
-#define __uu_dict_fix(self, node, x, y, op)                                                        \
-  ({                                                                                               \
+#define __uu_dict_fix(x, y, op)                                                                    \
+  static inline uu_node_mut_t __uu_dict_fix_##x(uu_dict_mut_t self, uu_node_mut_t node) {          \
     uu_node_mut_t y = node->y;                                                                     \
-                                                                                                   \
     if (lh(y) op rh(y)) {                                                                          \
-      y = __uu_dict_rotate(self, y, y, x);                                                         \
+      y = __uu_dict_rotate_##y(self, y);                                                           \
       height_set(y->y);                                                                            \
       height_set(y);                                                                               \
     }                                                                                              \
-                                                                                                   \
-    node = __uu_dict_rotate(self, node, x, y);                                                     \
+    node = __uu_dict_rotate_##x(self, node);                                                       \
     height_set(node->x);                                                                           \
     height_set(node);                                                                              \
-                                                                                                   \
-    node;                                                                                          \
-  })
+    return node;                                                                                   \
+  }
+
+__uu_dict_rotate(left, right);
+__uu_dict_rotate(right, left);
+__uu_dict_fix(left, right, >);
+__uu_dict_fix(right, left, <);
 
 uu_node_mut_t __uu_dict_remove_left_and_right(uu_dict_mut_t self, uu_node_mut_t node) {
   uu_node_mut_t onode = node, parent, tmp, child;
@@ -323,9 +320,9 @@ void __uu_dict_remove_rebalance(uu_dict_mut_t self, uu_node_mut_t node) {
     }
 
     if (diff <= -2) {
-      node = __uu_dict_fix(self, node, left, right, >);
+      node = __uu_dict_fix_left(self, node);
     } else if (diff >= 2) {
-      node = __uu_dict_fix(self, node, right, left, <);
+      node = __uu_dict_fix_right(self, node);
     }
 
     node = node->parent;
@@ -348,9 +345,9 @@ void __uu_dict_insert_rebalance(uu_dict_mut_t self, uu_node_mut_t node) {
     node->height = h;
 
     if (diff <= -2) {
-      node = __uu_dict_fix(self, node, left, right, >);
+      node = __uu_dict_fix_left(self, node);
     } else if (diff >= 2) {
-      node = __uu_dict_fix(self, node, right, left, <);
+      node = __uu_dict_fix_right(self, node);
     }
   }
 }
