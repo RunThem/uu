@@ -7,6 +7,15 @@ extern "C" {
 
 #include <stdint.h>
 
+#define uu_cmp_fn_def(type, x, y, ...)                                                             \
+  int cmp_fn_##type(const void* _##x, const void* _##y) {                                          \
+    type x = *(type*)_##x, y = *(type*)_##y;                                                       \
+                                                                                                   \
+    return __VA_ARGS__;                                                                            \
+  }
+
+typedef int (*uu_cmp_fn)(const void* x, const void* y);
+
 /***************************************************************************************************
  * Memory allocator
  **************************************************************************************************/
@@ -553,6 +562,37 @@ extern "C" {
     __result__;                                                                                    \
   })
 
+/**
+ * ::Vec<T>::sort(self, cmp_fn: uu_cmp_fn) -> !
+ *
+ * ```c
+  {
+    uu_vec(int) v = uu_vec_init(v);
+
+    uu_vec_insert_tail(v, 2);  // {2}
+    uu_vec_insert_tail(v, 1);  // {2, 1}
+    uu_vec_insert_tail(v, 4);  // {2, 1, 4}
+    uu_vec_insert_tail(v, 3);  // {2, 1, 4, 3}
+    assert(4 == uu_vec_len(v));
+
+    uu_vec_sort(v, cmp_fn_int);
+    assert(4 == uu_vec_len(v));
+
+    assert(1 == uu_vec_at(v, 0));
+    assert(2 == uu_vec_at(v, 1));
+    assert(3 == uu_vec_at(v, 2));
+    assert(4 == uu_vec_at(v, 3));
+  }
+
+ * ```
+ */
+#define uu_vec_sort(self, cmp_fn)                                                                  \
+  do {                                                                                             \
+    extern void* __uu_vec_sort(void*, uu_cmp_fn);                                                  \
+                                                                                                   \
+    __uu_vec_sort((void*)self, cmp_fn);                                                            \
+  } while (0)
+
 /***************************************************************************************************
  * Dict
  **************************************************************************************************/
@@ -571,18 +611,10 @@ extern "C" {
  */
 #define uu_dict(K, V) __typeof__(K*)
 
-#define uu_cmp_fn_def(type, x, y, ...)                                                             \
-  int cmp_fn_##type(const void* _##x, const void* _##y) {                                          \
-    type x = *(type*)_##x, y = *(type*)_##y;                                                       \
-                                                                                                   \
-    return __VA_ARGS__;                                                                            \
-  }
-
-typedef int (*uu_dict_cmp_fn)(const void* x, const void* y);
 typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
 
 /**
- * ::Dict<K, V = void*>::init(self) -> Self
+ * ::Dict<K, V = void*>::init(self, cmp_fn: uu_cmp_fn) -> Self
  *
  * ```c
   {
@@ -599,7 +631,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
  */
 #define uu_dict_init(self, cmp_fn)                                                                 \
   ({                                                                                               \
-    extern void* __uu_dict_init(uint32_t, uu_dict_cmp_fn);                                         \
+    extern void* __uu_dict_init(uint32_t, uu_cmp_fn);                                              \
                                                                                                    \
     self = (__typeof__(self))__uu_dict_init(sizeof(*self), cmp_fn);                                \
                                                                                                    \

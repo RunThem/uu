@@ -147,6 +147,14 @@ void* __uu_vec_each(void* _self, int ev) {
   return NULL;
 }
 
+void __uu_vec_sort(void* _self, uu_cmp_fn cmp_fn) {
+  uu_vec_mut_t self = (uu_vec_mut_t)_self;
+
+  assert(self);
+
+  qsort(self->items, self->len, self->itsize, cmp_fn);
+}
+
 /***************************************************************************************************
  * Dict
  **************************************************************************************************/
@@ -172,7 +180,7 @@ typedef struct uu_dict_t {
   uint32_t ksize;
   uint32_t len;
 
-  uu_dict_cmp_fn cmp_fn;
+  uu_cmp_fn cmp_fn;
 
   uu_node_mut_t root;
   uu_node_mut_t iter;
@@ -335,7 +343,7 @@ void __uu_dict_insert_rebalance(uu_dict_mut_t self, uu_node_mut_t node) {
   }
 }
 
-void* __uu_dict_init(uint32_t ksize, uu_dict_cmp_fn cmp_fn) {
+void* __uu_dict_init(uint32_t ksize, uu_cmp_fn cmp_fn) {
   uu_dict_mut_t self = NULL;
 
   assert(cmp_fn);
@@ -417,7 +425,7 @@ err0:
 }
 
 #ifdef UU_DICT_CHECK
-void __uu_dict_check(uu_node_mut_t root, uu_dict_cmp_fn cmp_fn) {
+void __uu_dict_check(uu_node_mut_t root, uu_cmp_fn cmp_fn) {
   if (!root) {
     return;
   }
