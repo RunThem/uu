@@ -597,6 +597,8 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
  * Dict
  **************************************************************************************************/
 
+typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
+
 #ifdef UU_DEBUG
 #  define uu_dict_dump(self, dump_fn)                                                              \
     do {                                                                                           \
@@ -610,8 +612,6 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
  * ::Class Dict<K: fn(K*, K*) -> int, V = void*>
  */
 #define uu_dict(K, V) __typeof__(K*)
-
-typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
 
 /**
  * ::Dict<K, V = void*>::init(self, cmp_fn: uu_cmp_fn) -> Self
