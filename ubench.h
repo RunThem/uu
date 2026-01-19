@@ -401,6 +401,18 @@ UBENCH_EXTERN struct ubench_state_s ubench_state;
 
 #define UBENCH_DO_BENCHMARK() while (ubench_do_benchmark(ubench_run_state) > 0)
 
+#define UBENCH_DO_BENCHMARK_BLOCK(...)                                                             \
+  do {                                                                                             \
+    const ubench_int64_t curr_sample  = ubench_run_state->sample - 1;                              \
+    ubench_run_state->ns[curr_sample] = ubench_ns();                                               \
+                                                                                                   \
+    {                                                                                              \
+      __VA_ARGS__;                                                                                 \
+    }                                                                                              \
+                                                                                                   \
+    ubench_run_state->ns[curr_sample] = ubench_ns() - ubench_run_state->ns[curr_sample];           \
+  } while (0)
+
 #define UBENCH_EX(SET, NAME)                                                                       \
   UBENCH_SURPRESS_WARNINGS_BEGIN                                                                   \
   UBENCH_EXTERN struct ubench_state_s ubench_state;                                                \
@@ -483,9 +495,7 @@ UBENCH_EXTERN struct ubench_state_s ubench_state;
 #endif
 
 static UBENCH_INLINE int ubench_do_benchmark(struct ubench_run_state_s* const ubs) {
-  const ubench_int64_t curr_sample = ubs->sample++;
-  ubs->ns[curr_sample]             = ubench_ns();
-  return curr_sample < ubs->size ? 1 : 0;
+  return ubs->sample++ < ubs->size ? 1 : 0;
 }
 
 static UBENCH_INLINE int ubench_should_filter(const char* filter, const char* benchmark);
@@ -704,7 +714,7 @@ int ubench_main(int argc, const char* const argv[]) {
     /* Time once to work out the base number of iterations to use. */
     ubench_state.benchmarks[index].func(&ubs);
 
-    iterations = (100 * 1000 * 1000) / ((ns[1] <= ns[0]) ? 1 : ns[1] - ns[0]);
+    iterations = (100 * 1000 * 1000) / (ns[0]);
     iterations = iterations < min_iterations ? min_iterations : iterations;
     iterations = iterations > max_iterations ? max_iterations : iterations;
 
@@ -720,11 +730,6 @@ int ubench_main(int argc, const char* const argv[]) {
       ubs.sample = 0;
       ubs.size   = iterations;
       ubench_state.benchmarks[index].func(&ubs);
-
-      /* Calculate benchmark run-times */
-      for (kndex = 0; kndex < iterations; kndex++) {
-        ns[kndex] = ns[kndex + 1] - ns[kndex];
-      }
 
       for (kndex = 0; kndex < iterations; kndex++) {
         avg_ns += ns[kndex];
