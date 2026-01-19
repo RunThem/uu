@@ -5,7 +5,7 @@ test: uu.c test.c
 	@./test
 
 bench: uu.c bench.c
-	$(CC) $(CFLAGS) -lm -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ -lm
 	@./bench
 
 clean:

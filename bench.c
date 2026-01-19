@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <time.h>
 
-const int COUNT = 100000;
+const int COUNT = 1000000;
 
 uu_cmp_fn_def(int, x, y, x - y);
 
@@ -34,13 +34,19 @@ UBENCH_EX(Dict, at) {
 
   shuffle(array, COUNT);
 
-  UBENCH_DO_BENCHMARK() {
-    for (i = 0; i < COUNT; i++) {
-      uu_dict_at(d, array[i]);
-    }
+  for (i = 0; i < COUNT; i++) {
+    uu_dict_insert(d, array[i], (void*)(intptr_t)array[i]);
   }
 
-  assert(i == COUNT);
+  UBENCH_DO_BENCHMARK() {
+    shuffle(array, COUNT);
+
+    UBENCH_DO_BENCHMARK_BLOCK({
+      for (i = 0; i < COUNT; i++) {
+        uu_dict_at(d, array[i]);
+      }
+    });
+  }
 
   UBENCH_DO_NOTHING(&i);
 
@@ -59,15 +65,19 @@ UBENCH_EX(Dict, insert) {
     array[i] = i;
   }
 
-  shuffle(array, COUNT);
-
   UBENCH_DO_BENCHMARK() {
+    shuffle(array, COUNT);
+
+    UBENCH_DO_BENCHMARK_BLOCK({
+      for (i = 0; i < COUNT; i++) {
+        uu_dict_insert(d, array[i], (void*)(intptr_t)array[i]);
+      }
+    });
+
     for (i = 0; i < COUNT; i++) {
-      uu_dict_insert(d, array[i], (void*)(intptr_t)array[i]);
+      uu_dict_remove(d, array[i]);
     }
   }
-
-  assert(i == COUNT);
 
   UBENCH_DO_NOTHING(&i);
 
@@ -88,19 +98,21 @@ UBENCH_EX(Dict, remove) {
 
   shuffle(array, COUNT);
 
-  for (i = 0; i < COUNT; i++) {
-    uu_dict_insert(d, i, (void*)(intptr_t)i);
-  }
-
-  shuffle(array, COUNT);
-
   UBENCH_DO_BENCHMARK() {
     for (i = 0; i < COUNT; i++) {
-      uu_dict_remove(d, array[i]);
+      uu_dict_insert(d, i, (void*)(intptr_t)i);
     }
+
+    shuffle(array, COUNT);
+
+    UBENCH_DO_BENCHMARK_BLOCK({
+      for (i = 0; i < COUNT; i++) {
+        uu_dict_remove(d, array[i]);
+      }
+    });
   }
 
-  assert(i == COUNT);
+  UBENCH_DO_NOTHING(&i);
 
   free(array);
 
