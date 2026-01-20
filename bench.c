@@ -1,8 +1,6 @@
 #include "ubench.h"
 #include "uu.h"
 
-const int COUNT = 100000;
-
 uu_cmp_fn_def(int, x, y, x - y);
 
 void shuffle(int* array, int len) {
@@ -32,7 +30,7 @@ int* make_array(int n) {
 UBENCH_EX(Dict, at) {
   uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
 
-  int i      = 0;
+  size_t i   = 0;
   int* array = make_array(COUNT);
 
   for (i = 0; i < COUNT; i++) {
@@ -57,7 +55,7 @@ UBENCH_EX(Dict, at) {
 UBENCH_EX(Dict, insert) {
   uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
 
-  int i      = 0;
+  size_t i   = 0;
   int* array = make_array(COUNT);
 
   UBENCH_DO_BENCHMARK() {
@@ -82,7 +80,7 @@ UBENCH_EX(Dict, insert) {
 UBENCH_EX(Dict, remove) {
   uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
 
-  int i      = 0;
+  size_t i   = 0;
   int* array = make_array(COUNT);
 
   UBENCH_DO_BENCHMARK() {
