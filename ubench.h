@@ -328,7 +328,7 @@ struct ubench_run_state_s {
   ubench_int64_t sample;
 };
 
-typedef void (*ubench_benchmark_t)(struct ubench_run_state_s* ubs);
+typedef void (*ubench_benchmark_t)(struct ubench_run_state_s* ubs, size_t COUNT);
 
 struct ubench_benchmark_state_s {
   ubench_benchmark_t func;
@@ -340,6 +340,7 @@ struct ubench_state_s {
   size_t benchmarks_length;
   FILE* output;
   double confidence;
+  size_t count;
 };
 
 /* extern to the global state ubench needs to execute */
@@ -416,7 +417,7 @@ UBENCH_EXTERN struct ubench_state_s ubench_state;
 #define UBENCH_EX(SET, NAME)                                                                       \
   UBENCH_SURPRESS_WARNINGS_BEGIN                                                                   \
   UBENCH_EXTERN struct ubench_state_s ubench_state;                                                \
-  static void ubench_##SET##_##NAME(struct ubench_run_state_s* ubs);                               \
+  static void ubench_##SET##_##NAME(struct ubench_run_state_s* ubs, UBENCH_UNUSED size_t);         \
   UBENCH_INITIALIZER(ubench_register_##SET##_##NAME) {                                             \
     const size_t index      = ubench_state.benchmarks_length++;                                    \
     const char name_part[]  = #SET "." #NAME;                                                      \
@@ -431,34 +432,40 @@ UBENCH_EXTERN struct ubench_state_s ubench_state;
     UBENCH_SNPRINTF(name, name_size, "%s", name_part);                                             \
   }                                                                                                \
   UBENCH_SURPRESS_WARNINGS_END                                                                     \
-  void ubench_##SET##_##NAME(struct ubench_run_state_s* ubench_run_state)
+  void ubench_##SET##_##NAME(struct ubench_run_state_s* ubench_run_state,                          \
+                             UBENCH_UNUSED size_t COUNT)
 
 #define UBENCH(SET, NAME)                                                                          \
   static void ubench_run_##SET##_##NAME(void);                                                     \
   UBENCH_EX(SET, NAME) {                                                                           \
     UBENCH_DO_BENCHMARK() {                                                                        \
-      ubench_run_##SET##_##NAME();                                                                 \
+      UBENCH_DO_BENCHMARK_BLOCK({ ubench_run_##SET##_##NAME(); });                                 \
     }                                                                                              \
   }                                                                                                \
   void ubench_run_##SET##_##NAME(void)
 
-#define UBENCH_F_SETUP(FIXTURE) static void ubench_f_setup_##FIXTURE(struct FIXTURE* ubench_fixture)
+#define UBENCH_F_SETUP(FIXTURE)                                                                    \
+  static void ubench_f_setup_##FIXTURE(struct FIXTURE* ubench_fixture, UBENCH_UNUSED size_t COUNT)
 
 #define UBENCH_F_TEARDOWN(FIXTURE)                                                                 \
-  static void ubench_f_teardown_##FIXTURE(struct FIXTURE* ubench_fixture)
+  static void ubench_f_teardown_##FIXTURE(struct FIXTURE* ubench_fixture,                          \
+                                          UBENCH_UNUSED size_t COUNT)
 
 #define UBENCH_EX_F(FIXTURE, NAME)                                                                 \
   UBENCH_SURPRESS_WARNINGS_BEGIN                                                                   \
   UBENCH_EXTERN struct ubench_state_s ubench_state;                                                \
-  static void ubench_f_setup_##FIXTURE(struct FIXTURE*);                                           \
-  static void ubench_f_teardown_##FIXTURE(struct FIXTURE*);                                        \
-  static void ubench_run_ex_##FIXTURE##_##NAME(struct FIXTURE*, struct ubench_run_state_s*);       \
-  static void ubench_f_##FIXTURE##_##NAME(struct ubench_run_state_s* ubench_run_state) {           \
+  static void ubench_f_setup_##FIXTURE(struct FIXTURE*, size_t);                                   \
+  static void ubench_f_teardown_##FIXTURE(struct FIXTURE*, size_t);                                \
+  static void ubench_run_ex_##FIXTURE##_##NAME(struct FIXTURE*,                                    \
+                                               struct ubench_run_state_s*,                         \
+                                               size_t);                                            \
+  static void ubench_f_##FIXTURE##_##NAME(struct ubench_run_state_s* ubench_run_state,             \
+                                          UBENCH_UNUSED size_t COUNT) {                            \
     struct FIXTURE fixture;                                                                        \
     memset(&fixture, 0, sizeof(fixture));                                                          \
-    ubench_f_setup_##FIXTURE(&fixture);                                                            \
-    ubench_run_ex_##FIXTURE##_##NAME(&fixture, ubench_run_state);                                  \
-    ubench_f_teardown_##FIXTURE(&fixture);                                                         \
+    ubench_f_setup_##FIXTURE(&fixture, COUNT);                                                     \
+    ubench_run_ex_##FIXTURE##_##NAME(&fixture, ubench_run_state, COUNT);                           \
+    ubench_f_teardown_##FIXTURE(&fixture, COUNT);                                                  \
   }                                                                                                \
   UBENCH_INITIALIZER(ubench_register_##FIXTURE##_##NAME) {                                         \
     const size_t index      = ubench_state.benchmarks_length++;                                    \
@@ -475,16 +482,17 @@ UBENCH_EXTERN struct ubench_state_s ubench_state;
   }                                                                                                \
   UBENCH_SURPRESS_WARNINGS_END                                                                     \
   void ubench_run_ex_##FIXTURE##_##NAME(struct FIXTURE* ubench_fixture,                            \
-                                        struct ubench_run_state_s* ubench_run_state)
+                                        struct ubench_run_state_s* ubench_run_state,               \
+                                        UBENCH_UNUSED size_t COUNT)
 
 #define UBENCH_F(FIXTURE, NAME)                                                                    \
-  static void ubench_run_##FIXTURE##_##NAME(struct FIXTURE*);                                      \
+  static void ubench_run_##FIXTURE##_##NAME(struct FIXTURE*, UBENCH_UNUSED size_t COUNT);          \
   UBENCH_EX_F(FIXTURE, NAME) {                                                                     \
     UBENCH_DO_BENCHMARK() {                                                                        \
-      ubench_run_##FIXTURE##_##NAME(ubench_fixture);                                               \
+      ubench_run_##FIXTURE##_##NAME(ubench_fixture, COUNT);                                        \
     }                                                                                              \
   }                                                                                                \
-  void ubench_run_##FIXTURE##_##NAME(struct FIXTURE* ubench_fixture)
+  void ubench_run_##FIXTURE##_##NAME(struct FIXTURE* ubench_fixture, UBENCH_UNUSED size_t COUNT)
 
 #ifdef __clang__
 #  pragma clang diagnostic push
@@ -623,6 +631,7 @@ int ubench_main(int argc, const char* const argv[]) {
     const char filter_str[]     = "--filter=";
     const char output_str[]     = "--output=";
     const char confidence_str[] = "--confidence=";
+    const char count_str[]      = "--count=";
 
     if (0 == ubench_strncmp(argv[index], help_str, strlen(help_str))) {
       printf("ubench.h - the single file benchmarking solution for C/C++!\n"
@@ -634,7 +643,8 @@ int ubench_main(int argc, const char* const argv[]) {
              "Output names can be passed to --filter.\n"
              "  --output=<output>         Output a CSV file of the results.\n"
              "  --confidence=<confidence> Change the confidence cut-off for a "
-             "failed test. Defaults to 2.5%%\n");
+             "failed test. Defaults to 2.5%%\n"
+             "  --count=<count>           Number of benchmark tests, default 10000.\n");
       goto cleanup;
     } else if (0 == ubench_strncmp(argv[index], filter_str, strlen(filter_str))) {
       /* user wants to filter what benchmarks run! */
@@ -659,6 +669,8 @@ int ubench_main(int argc, const char* const argv[]) {
                 ubench_state.confidence);
         goto cleanup;
       }
+    } else if (0 == ubench_strncmp(argv[index], count_str, strlen(count_str))) {
+      ubench_state.count = atol(argv[index] + strlen(count_str));
     }
   }
 
@@ -670,10 +682,11 @@ int ubench_main(int argc, const char* const argv[]) {
     ran_benchmarks++;
   }
 
-  printf("%s[==========]%s Running %" UBENCH_PRIu64 " benchmarks.\n",
+  printf("%s[==========]%s Running %" UBENCH_PRIu64 " benchmarks. COUNT(%ld)\n",
          colours[GREEN],
          colours[RESET],
-         UBENCH_CAST(ubench_uint64_t, ran_benchmarks));
+         UBENCH_CAST(ubench_uint64_t, ran_benchmarks),
+         ubench_state.count);
 
   if (ubench_state.output) {
     fprintf(ubench_state.output, "name, mean (ns), stddev (%%), confidence (%%)\n");
@@ -712,7 +725,7 @@ int ubench_main(int argc, const char* const argv[]) {
     ubs.sample = 0;
 
     /* Time once to work out the base number of iterations to use. */
-    ubench_state.benchmarks[index].func(&ubs);
+    ubench_state.benchmarks[index].func(&ubs, ubench_state.count);
 
     iterations = (100 * 1000 * 1000) / (ns[0]);
     iterations = iterations < min_iterations ? min_iterations : iterations;
@@ -729,7 +742,7 @@ int ubench_main(int argc, const char* const argv[]) {
 
       ubs.sample = 0;
       ubs.size   = iterations;
-      ubench_state.benchmarks[index].func(&ubs);
+      ubench_state.benchmarks[index].func(&ubs, ubench_state.count);
 
       for (kndex = 0; kndex < iterations; kndex++) {
         avg_ns += ns[kndex];
@@ -898,7 +911,7 @@ UBENCH_C_FUNC void _ReadWriteBarrier(void);
 */
 #define UBENCH_STATE()                                                                             \
   UBENCH_DECLARE_DO_NOTHING()                                                                      \
-  struct ubench_state_s ubench_state = {0, 0, 0, 2.5}
+  struct ubench_state_s ubench_state = {0, 0, 0, 2.5, 10000}
 
 /*
    define a main() function to call into ubench.h and start executing
