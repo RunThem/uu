@@ -693,11 +693,12 @@ int ubench_main(int argc, const char* const argv[]) {
   }
 
   for (index = 0; index < ubench_state.benchmarks_length; index++) {
-    int result                 = 1;
-    size_t mndex               = 0;
-    ubench_int64_t best_avg_ns = 0;
-    double best_deviation      = 0;
-    double best_confidence     = 101.0;
+    int result                  = 1;
+    size_t mndex                = 0;
+    ubench_int64_t best_avg_ns  = 0;
+    ubench_int64_t best_avg_ns2 = 0;
+    double best_deviation       = 0;
+    double best_confidence      = 101.0;
     struct ubench_run_state_s ubs;
 
 #define UBENCH_MIN_ITERATIONS 10
@@ -769,6 +770,7 @@ int ubench_main(int argc, const char* const argv[]) {
       /* If the deviation beats our previous best, record it. */
       if (confidence < best_confidence) {
         best_avg_ns     = avg_ns;
+        best_avg_ns2    = avg_ns;
         best_deviation  = deviation;
         best_confidence = confidence;
       }
@@ -824,10 +826,11 @@ int ubench_main(int argc, const char* const argv[]) {
         }
       }
 
-      printf("%" UBENCH_PRId64 ".%03" UBENCH_PRId64 "%s, confidence interval +- %f%%)\n",
+      printf("%" UBENCH_PRId64 ".%03" UBENCH_PRId64 "%s, op %lluns, confidence interval +- %f%%)\n",
              best_avg_ns / 1000,
              best_avg_ns % 1000,
              unit,
+             best_avg_ns2 / ubench_state.count,
              best_confidence);
     }
   }
