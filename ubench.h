@@ -826,7 +826,7 @@ int ubench_main(int argc, const char* const argv[]) {
         }
       }
 
-      printf("%" UBENCH_PRId64 ".%03" UBENCH_PRId64 "%s, op %lluns, confidence interval +- %f%%)\n",
+      printf("%" UBENCH_PRId64 ".%03" UBENCH_PRId64 "%s, op %ldns, confidence interval +- %f%%)\n",
              best_avg_ns / 1000,
              best_avg_ns % 1000,
              unit,
