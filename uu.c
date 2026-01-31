@@ -159,19 +159,219 @@ void __uu_vec_sort(void* _self, uu_cmp_fn cmp_fn) {
  * Dict
  **************************************************************************************************/
 
-struct uu_node_t;
-typedef struct uu_node_t* uu_node_mut_t;
-typedef const struct uu_node_t* uu_node_ref_t;
-typedef struct uu_node_t {
-  uu_node_mut_t parent;
-  uu_node_mut_t left;
-  uu_node_mut_t right;
-  uint32_t height;
-  uint32_t ksize;
-
-  void* uptr;
+/* clang-format off */
+struct mnode_t;
+typedef struct mnode_t* mnode_mut_t;
+typedef const struct mnode_t* mnode_ref_t;
+typedef struct mnode_t {
+  mnode_mut_t l, r, p;
+  uint32_t h;
+  uint32_t hash;
+  uintptr_t uptr;
   uint8_t key[0];
-} uu_node_t;
+} mnode_t;
+
+struct mtree_t;
+typedef struct mtree_t* mtree_mut_t;
+typedef const struct mtree_t* mtree_ref_t;
+typedef struct mtree_t {
+  int len;
+  mnode_mut_t root;
+} mtree_t;
+
+static inline int __lh(mnode_mut_t n) { return n->l ? n->l->h : 0; }
+static inline int __rh(mnode_mut_t n) { return n->r ? n->r->h : 0; }
+static inline void __hu(mnode_mut_t n) { int lh = __lh(n), rh = __rh(n); n->h = (lh > rh ? lh : rh) + 1; }
+static inline void __mtree_child_replace(mtree_mut_t T, mnode_mut_t p, mnode_mut_t o, mnode_mut_t n) {
+  if (!p) { T->root = n; } else { *(p->l == o ? &p->l : &p->r) = n; }
+}
+static inline mnode_mut_t __mtree_rotate_left(mtree_mut_t T, mnode_mut_t n) {
+  mnode_mut_t r = n->r, p = n->p;
+  n->r = r->l;
+  if (r->l) r->l->p = n;
+  r->l = n;
+  r->p = p;
+  __mtree_child_replace(T, p, n, r);
+  n->p = r;
+  return r;
+}
+static inline mnode_mut_t __mtree_rotate_right(mtree_mut_t T, mnode_mut_t n) {
+  mnode_mut_t l = n->l, p = n->p;
+  n->l = l->r;
+  if (l->r) l->r->p = n;
+  l->r = n;
+  l->p = p;
+  __mtree_child_replace(T, p, n, l);
+  n->p = l;
+  return l;
+}
+static inline mnode_mut_t __mtree_fix_left(mtree_mut_t T, mnode_mut_t n) {
+  mnode_mut_t r = n->r;
+  int lh = __lh(r), rh = __rh(r);
+  if (lh > rh) {
+    r = __mtree_rotate_right(T, r);
+    __hu(r->r);
+    __hu(r);
+  }
+  n = __mtree_rotate_left(T, n);
+  __hu(n->l);
+  __hu(n);
+  return n;
+}
+static inline mnode_mut_t __mtree_fix_right(mtree_mut_t T, mnode_mut_t n) {
+  mnode_mut_t l = n->l;
+  int lh = __lh(l), rh = __rh(l);
+  if (lh < rh) {
+    l = __mtree_rotate_left(T, l);
+    __hu(l->l);
+    __hu(l);
+  }
+  n = __mtree_rotate_right(T, n);
+  __hu(n->r);
+  __hu(n);
+  return n;
+}
+static inline mnode_mut_t __mtree_pop_left_and_right(mtree_mut_t T, mnode_mut_t n) {
+  mnode_mut_t o = n, p, l, c;
+  n             = n->r;
+  while ((l = n->l)) n = l;
+  c = n->r;
+  p = n->p;
+  if (c) c->p = p;
+  __mtree_child_replace(T, p, n, c);
+  if (n->p == o) p = n;
+  n->l = o->l;
+  n->r = o->r;
+  n->p = o->p;
+  n->h = o->h;
+  __mtree_child_replace(T, o->p, o, n);
+  o->l->p = n;
+  if (o->r) o->r->p = n;
+  return p;
+}
+static inline mnode_mut_t __mtree_pop_left_or_right(mtree_mut_t T, mnode_mut_t n) {
+  mnode_mut_t c = n->l, p;
+  if (!c) c = n->r;
+  p = n->p;
+  __mtree_child_replace(T, p, n, c);
+  if (c) c->p = p;
+  return p;
+}
+static inline void __mtree_pop_rebalance(mtree_mut_t T, mnode_mut_t n) {
+  int64_t lh, rh, d, h;
+  while (n) {
+    lh = __lh(n);
+    rh = __rh(n);
+    h  = (lh > rh ? lh : rh) + 1;
+    d  = lh - rh;
+    if (n->h != h) n->h = h; else if (d >= -1 && d <= 1) break;
+    if (d <= -2) {
+      n = __mtree_fix_left(T, n);
+    } else if (d >= 2) {
+      n = __mtree_fix_right(T, n);
+    }
+    n = n->p;
+  }
+}
+static inline void __mtree_put_rebalance(mtree_mut_t T, mnode_mut_t n) {
+  int64_t lh, rh, d, h;
+  for (n = n->p; n; n = n->p) {
+    lh = __lh(n);
+    rh = __rh(n);
+    h  = (lh > rh ? lh : rh) + 1;
+    d  = lh - rh;
+    if (n->h == h) break;
+    n->h = h;
+    if (d <= -2) {
+      n = __mtree_fix_left(T, n);
+    } else if (d >= 2) {
+      n = __mtree_fix_right(T, n);
+    }
+  }
+}
+static inline mnode_mut_t mtree_tear(mtree_mut_t T, mnode_mut_t* next) {
+  mnode_mut_t n = *next, p;
+  if (!n) {
+    if (!T->root) return NULL;
+    n = T->root;
+  }
+  while (!0) { if (n->l) n = n->l; else if (n->r) n = n->r; else break; }
+  p = n->p;
+  if (!p) {
+    *next   = NULL;
+    T->root = NULL;
+    T->len = 0;
+    return n;
+  }
+  if (p->l == n) p->l = NULL; else p->r = NULL;
+  n->h  = 0;
+  *next = p;
+  return n;
+}
+static inline mnode_mut_t mtree_first(mtree_mut_t T) {
+  mnode_mut_t n = T->root;
+  if (!n) return NULL;
+  while (n->l) n = n->l;
+  return n;
+}
+static inline mnode_mut_t mtree_next(mnode_mut_t n) {
+  mnode_mut_t last;
+  if (n) {
+    if (n->r) {
+      n = n->r;
+      while (n->l) n = n->l;
+    } else {
+      while (!0) {
+        last = n;
+        n    = n->p;
+        if (!n || n->l == last) break;
+      }
+    }
+  }
+  return n;
+}
+static inline int mtree_cmp_fn(uint32_t xhash, uint32_t yhash, void* xkey, void* ykey, uu_cmp_fn cmp_fn) {
+  if (xhash != yhash) return xhash > yhash ? 1 : -1; else return cmp_fn(xkey, ykey);
+}
+static inline mnode_mut_t mtree_at(mtree_mut_t T, uint32_t hash, void* key, uu_cmp_fn cmp_fn) {
+  mnode_mut_t l = T->root;
+  int t;
+  while (l) {
+    t = mtree_cmp_fn(hash, l->hash, key, &l->key[0], cmp_fn);
+    if (t != 0) l = (t < 0) ? l->l : l->r; else return l;
+  }
+  return NULL;
+}
+static inline void mtree_del(mtree_mut_t T, mnode_mut_t n) {
+  if (T->len == 1) T->root = NULL;
+  else if (T->len == 2) {
+    if (T->root != n) { T->root->l = T->root->r = NULL; }
+    else {
+      T->root = (mnode_mut_t)((intptr_t)(n->l) | (intptr_t)(n->r));
+      T->root->p = NULL;
+    }
+  } else {
+    mnode_mut_t p = (n->l && n->r ? __mtree_pop_left_and_right : __mtree_pop_left_or_right)(T, n);
+    if (p) __mtree_pop_rebalance(T, p);
+  }
+  T->len--;
+}
+static inline int mtree_add(mtree_mut_t T, mnode_mut_t n, uu_cmp_fn cmp_fn) {
+  mnode_mut_t *l = &T->root, p = NULL;
+  int t = 0;
+  while (l[0]) {
+    p = l[0];
+    t = mtree_cmp_fn(n->hash, p->hash, &n->key[0], &p->key[0], cmp_fn);
+    if (t == 0) return !!0;
+    l = (t < 0) ? &p->l : &p->r;
+  }
+  n->p = p;
+  l[0] = n;
+  if (T->len == 1) p->h++; else if (T->len > 1) __mtree_put_rebalance(T, n);
+  T->len++;
+  return !0;
+}
+/* clang-format on */
 
 struct uu_dict_t;
 typedef struct uu_dict_t* uu_dict_mut_t;
@@ -182,165 +382,146 @@ typedef struct uu_dict_t {
 
   uu_cmp_fn cmp_fn;
 
-  uu_node_mut_t root;
-  uu_node_mut_t iter;
+  mtree_mut_t buckets;
+  mtree_mut_t obuckets;
+  uint32_t buckets_mask;
+  uint32_t obuckets_mask;
+  uint32_t obuckets_idx;
+  uint32_t seed;
+
+  mtree_mut_t iter_bucket;
+  mnode_mut_t iter_node;
 } uu_dict_t;
 
-static inline uint32_t lh(uu_node_mut_t n) {
-  return n->left ? n->left->height : 0;
+uint32_t MurmurHash3_32(const void* data, int len, uint32_t seed) {
+  const int nblocks      = len / 4;
+  uint32_t h1            = seed;
+  uint32_t k1            = 0;
+  uint32_t c1            = 0xcc9e2d51;
+  uint32_t c2            = 0x1b873593;
+  const uint32_t* blocks = (const uint32_t*)(data + nblocks * 4);
+  const uint8_t* tail    = (const uint8_t*)(data + nblocks * 4);
+  int i                  = 0;
+
+  //----------
+  // body
+
+  for (i = -nblocks; i; i++) {
+    k1 = blocks[i];
+    k1 *= c1;
+    k1 = (k1 << 15) | (k1 >> 17);
+    k1 *= c2;
+
+    h1 ^= k1;
+    h1 = (h1 << 13) | (h1 >> 19);
+    h1 = h1 * 5 + 0xe6546b64;
+  }
+
+  //----------
+  // tail
+
+  k1 = 0;
+  switch (len & 3) {
+    case 3: k1 ^= tail[2] << 16; /* fallthrough */
+    case 2: k1 ^= tail[1] << 8;  /* fallthrough */
+    case 1:
+      k1 ^= tail[0];
+      k1 *= c1;
+      k1 = (k1 << 15) | (k1 >> 17);
+      k1 *= c2;
+      h1 ^= k1;
+
+    default: break;
+  };
+
+  //----------
+  // finalization
+
+  h1 ^= len;
+  h1 ^= h1 >> 16;
+  h1 *= 0x85ebca6b;
+  h1 ^= h1 >> 13;
+  h1 *= 0xc2b2ae35;
+  h1 ^= h1 >> 16;
+
+  return h1;
 }
 
-static inline uint32_t rh(uu_node_mut_t n) {
-  return n->right ? n->right->height : 0;
-}
+void __uu_dict_rehash(uu_dict_mut_t self) {
+  mtree_mut_t buckets  = NULL;
+  mtree_mut_t bucket   = NULL;
+  mtree_mut_t obucket  = NULL;
+  mnode_mut_t node     = NULL;
+  mnode_mut_t next     = NULL;
+  uint32_t buckets_len = 0;
+  uint32_t limit       = 0;
 
-static inline void height_set(uu_node_mut_t n) {
-  uint32_t l = lh(n), r = rh(n);
-  n->height = (l > r ? l : r) + 1;
-}
+  if (self->obuckets) {
+    while (self->obuckets_idx > 0 && !self->obuckets[--self->obuckets_idx].root) {
+    }
 
-static inline void
-    __uu_dict_child_replace(uu_dict_mut_t self, uu_node_mut_t p, uu_node_mut_t o, uu_node_mut_t n) {
-  if (p) {
-    *((p->left == o) ? &p->left : &p->right) = n;
+    obucket = &self->obuckets[self->obuckets_idx];
+    while ((node = mtree_tear(obucket, &next))) {
+      node->l = node->r = node->p = NULL;
+      node->h                     = 1;
+
+      bucket = &self->buckets[node->hash & self->buckets_mask];
+      mtree_add(bucket, node, self->cmp_fn);
+    }
+
+    if (self->obuckets_idx == 0) {
+      self->obuckets      = NULL;
+      self->obuckets_mask = 0;
+    }
   } else {
-    self->root = n;
+    buckets_len = self->buckets_mask + 1;
+    limit       = self->len * 6 >> 2;
+
+    uu_chk_if(limit <= buckets_len);
+
+    while (buckets_len < limit) {
+      buckets_len <<= 1;
+    }
+
+    buckets = UU_MALLOC(sizeof(mtree_t) * buckets_len);
+    uu_end_if(!buckets, err0);
+
+    bzero(buckets, sizeof(mtree_t) * buckets_len);
+
+    self->obuckets      = self->buckets;
+    self->obuckets_mask = self->buckets_mask;
+    self->obuckets_idx  = self->buckets_mask + 1;
+    self->buckets       = buckets;
+    self->buckets_mask  = buckets_len - 1;
   }
+
+  return;
+
+err0:
+  return;
 }
 
-#define __uu_dict_rotate(x, y)                                                                     \
-  static inline uu_node_mut_t __uu_dict_rotate_##x(uu_dict_mut_t self, uu_node_mut_t node) {       \
-    uu_node_mut_t y = node->y, parent = node->parent;                                              \
-    node->y = y->x;                                                                                \
-    if (y->x)                                                                                      \
-      y->x->parent = node;                                                                         \
-    y->x      = node;                                                                              \
-    y->parent = parent;                                                                            \
-    __uu_dict_child_replace(self, parent, node, y);                                                \
-    return (node->parent = y);                                                                     \
+static inline int __uu_dict_find(uu_dict_mut_t self,
+                                 uint32_t hash,
+                                 void* key,
+                                 uu_cmp_fn cmp_fn,
+                                 mtree_mut_t* out_bucket,
+                                 mnode_mut_t* out_node) {
+  mtree_mut_t bucket = NULL;
+  mnode_mut_t node   = NULL;
+
+  bucket = &self->buckets[hash & self->buckets_mask];
+  node   = mtree_at(bucket, hash, key, cmp_fn);
+
+  if (self->obuckets && !node && ((hash & self->obuckets_mask) < self->obuckets_idx)) {
+    bucket = &self->obuckets[hash & self->obuckets_mask];
+    node   = mtree_at(bucket, hash, key, cmp_fn);
   }
 
-#define __uu_dict_fix(x, y, op)                                                                    \
-  static inline uu_node_mut_t __uu_dict_fix_##x(uu_dict_mut_t self, uu_node_mut_t node) {          \
-    uu_node_mut_t y = node->y;                                                                     \
-    if (lh(y) op rh(y)) {                                                                          \
-      y = __uu_dict_rotate_##y(self, y);                                                           \
-      height_set(y->y);                                                                            \
-      height_set(y);                                                                               \
-    }                                                                                              \
-    node = __uu_dict_rotate_##x(self, node);                                                       \
-    height_set(node->x);                                                                           \
-    height_set(node);                                                                              \
-    return node;                                                                                   \
-  }
+  out_bucket[0] = bucket;
+  out_node[0]   = node;
 
-__uu_dict_rotate(left, right);
-__uu_dict_rotate(right, left);
-__uu_dict_fix(left, right, >);
-__uu_dict_fix(right, left, <);
-
-uu_node_mut_t __uu_dict_remove_left_and_right(uu_dict_mut_t self, uu_node_mut_t node) {
-  uu_node_mut_t onode = node, parent, child;
-
-  if (lh(node) - rh(node) > 0) {
-    for (node = node->left; node->right; node = node->right) {
-    }
-
-    child = node->left;
-  } else {
-    for (node = node->right; node->left; node = node->left) {
-    }
-
-    child = node->right;
-  }
-
-  parent = node->parent;
-
-  if (child) {
-    child->parent = parent;
-  }
-
-  __uu_dict_child_replace(self, parent, node, child);
-  if (node->parent == onode) {
-    parent = node;
-  }
-
-  node->left   = onode->left;
-  node->right  = onode->right;
-  node->parent = onode->parent;
-  node->height = onode->height;
-
-  __uu_dict_child_replace(self, onode->parent, onode, node);
-
-  if (onode->left) {
-    onode->left->parent = node;
-  }
-
-  if (onode->right) {
-    onode->right->parent = node;
-  }
-
-  return parent;
-}
-
-uu_node_mut_t __uu_dict_remove_left_or_right(uu_dict_mut_t self, uu_node_mut_t node) {
-  uu_node_mut_t child = node->left ? node->left : node->right, parent = node->parent;
-
-  if (child) {
-    child->parent = parent;
-  }
-
-  __uu_dict_child_replace(self, parent, node, child);
-
-  return parent;
-}
-
-void __uu_dict_remove_rebalance(uu_dict_mut_t self, uu_node_mut_t node) {
-  int64_t l, r, h, diff;
-
-  while (node) {
-    l    = lh(node);
-    r    = rh(node);
-    h    = (l > r ? l : r) + 1;
-    diff = l - r;
-
-    if (node->height != h) {
-      node->height = h;
-    } else if (diff >= -1 && diff <= -1) {
-      break;
-    }
-
-    if (diff <= -2) {
-      node = __uu_dict_fix_left(self, node);
-    } else if (diff >= 2) {
-      node = __uu_dict_fix_right(self, node);
-    }
-
-    node = node->parent;
-  }
-}
-
-void __uu_dict_insert_rebalance(uu_dict_mut_t self, uu_node_mut_t node) {
-  int64_t l, r, h, diff;
-
-  for (node = node->parent; node; node = node->parent) {
-    l    = lh(node);
-    r    = rh(node);
-    h    = (l > r ? l : r) + 1;
-    diff = l - r;
-
-    if (node->height == h) {
-      break;
-    }
-
-    node->height = h;
-
-    if (diff <= -2) {
-      node = __uu_dict_fix_left(self, node);
-    } else if (diff >= 2) {
-      node = __uu_dict_fix_right(self, node);
-    }
-  }
+  return !!node;
 }
 
 void* __uu_dict_init(uint32_t ksize, uu_cmp_fn cmp_fn) {
@@ -351,43 +532,55 @@ void* __uu_dict_init(uint32_t ksize, uu_cmp_fn cmp_fn) {
   self = (uu_dict_mut_t)UU_MALLOC(sizeof(uu_dict_t));
   uu_end_if(!self, err0);
 
-  self->ksize  = ksize;
-  self->cmp_fn = cmp_fn;
-  self->len    = 0;
-  self->root = self->iter = NULL;
+  self->buckets_mask = 7;
+
+  self->buckets = (mtree_mut_t)UU_MALLOC(sizeof(mtree_t) * 8);
+  uu_end_if(!self->buckets, err1);
+
+  bzero(self->buckets, sizeof(mtree_t) * 8);
+
+  self->ksize         = ksize;
+  self->cmp_fn        = cmp_fn;
+  self->len           = 0;
+  self->iter_node     = NULL;
+  self->iter_bucket   = NULL;
+  self->obuckets      = NULL;
+  self->obuckets_mask = 0;
+  self->obuckets_idx  = 0;
+  self->seed          = (uint32_t)(uintptr_t)self;
 
   return self;
 
+err1:
+  UU_FREE(self);
 err0:
   return NULL;
 }
 
 void __uu_dict_deinit(void* _self) {
   uu_dict_mut_t self = (uu_dict_mut_t)_self;
-  uu_node_mut_t node = NULL, head = self->root, tail = self->root;
+  mtree_mut_t bucket = NULL;
+  mnode_mut_t node   = NULL;
+  mnode_mut_t next   = NULL;
 
   assert(self);
 
-  while (head) {
-    node = head;
+  bucket = &self->buckets[0];
 
-    if (node->left) {
-      tail->parent = node->left;
-      tail         = tail->parent;
-      tail->parent = NULL;
+  do {
+    while ((node = mtree_tear(bucket, &next))) {
+      UU_FREE(node);
     }
 
-    if (node->right) {
-      tail->parent = node->right;
-      tail         = tail->parent;
-      tail->parent = NULL;
+    bucket++;
+
+    if (bucket == self->buckets + self->buckets_mask + 1) {
+      bucket = self->obuckets;
     }
+  } while (bucket != self->obuckets + self->obuckets_idx);
 
-    head = head->parent;
-
-    UU_FREE(node);
-  }
-
+  UU_FREE(self->buckets);
+  UU_FREE(self->obuckets);
   UU_FREE(self);
 }
 
@@ -401,93 +594,49 @@ uint32_t __uu_dict_len(void* _self) {
 
 void* __uu_dict_at(void* _self, void* key) {
   uu_dict_mut_t self = (uu_dict_mut_t)_self;
-  uu_node_mut_t node = self->root;
+  mtree_mut_t bucket = NULL;
+  mnode_mut_t node   = NULL;
+  uint32_t hash      = 0;
   int result         = 0;
 
   assert(self);
   uu_chk_if(self->len == 0, NULL);
 
-  while ((node)) {
-    result = self->cmp_fn(key, &node->key[0]);
-    if (result == 0) {
-      break;
-    }
+  hash   = MurmurHash3_32(key, self->ksize, self->seed);
+  result = __uu_dict_find(self, hash, key, self->cmp_fn, &bucket, &node);
+  uu_end_if(!result, err0);
 
-    node = (result < 0) ? node->left : node->right;
-  }
+  __uu_dict_rehash(self);
 
-  uu_end_if(!node, err0);
-
-  return node->uptr;
+  return (void*)node->uptr;
 
 err0:
   return NULL;
 }
 
-#ifdef UU_DICT_CHECK
-void __uu_dict_check(uu_node_mut_t root, uu_cmp_fn cmp_fn) {
-  if (!root) {
-    return;
-  }
-
-  if (root->left) {
-    assert(cmp_fn(&root->key[0], &root->left->key[0]) > 0);
-  }
-
-  if (root->right) {
-    assert(cmp_fn(&root->key[0], &root->right->key[0]) < 0);
-  }
-
-  if (root->left && root->right) {
-    uint32_t l   = lh(root);
-    uint32_t r   = rh(root);
-    int64_t diff = (int64_t)l - (int64_t)r;
-    uint32_t max = l > r ? l : r;
-    assert(diff >= -1 && diff <= 1);
-    assert(root->height == max + 1);
-  }
-
-  __uu_dict_check(root->left, cmp_fn);
-  __uu_dict_check(root->right, cmp_fn);
-}
-
-#endif /* !UU_DICT_CHECK */
-
 void* __uu_dict_remove(void* _self, void* key) {
   uu_dict_mut_t self = (uu_dict_mut_t)_self;
-  uu_node_mut_t node = self->root, parent;
-  int result         = 0;
+  mtree_mut_t bucket = NULL;
+  mnode_mut_t node   = NULL;
   void* uptr         = NULL;
+  uint32_t hash      = 0;
+  int result         = 0;
 
   assert(self);
   uu_chk_if(self->len == 0, NULL);
 
-#ifdef UU_DICT_CHECK
-  __uu_dict_check(self->root, self->cmp_fn);
-#endif
+  hash   = MurmurHash3_32(key, self->ksize, self->seed);
+  result = __uu_dict_find(self, hash, key, self->cmp_fn, &bucket, &node);
+  uu_end_if(!result, err0);
 
-  while ((node)) {
-    result = self->cmp_fn(key, &node->key[0]);
-    if (result == 0) {
-      break;
-    }
+  mtree_del(bucket, node);
 
-    node = (result < 0) ? node->left : node->right;
-  }
-
-  uu_end_if(!node, err0);
-
-  parent = ((node->left && node->right) ? __uu_dict_remove_left_and_right :
-                                          __uu_dict_remove_left_or_right)(self, node);
-
-  uptr = node->uptr;
+  uptr = (void*)node->uptr;
   UU_FREE(node);
 
-  if (parent) {
-    __uu_dict_remove_rebalance(self, parent);
-  }
-
   self->len--;
+
+  // __uu_dict_rehash(self);
 
   return uptr;
 
@@ -495,88 +644,35 @@ err0:
   return NULL;
 }
 
-void* __uu_dict_insert(void* _self, void* key, void* uptr) {
-  uu_dict_mut_t self  = (uu_dict_mut_t)_self;
-  uu_node_mut_t *link = &self->root, parent = NULL, node;
-  int result = 0;
+int __uu_dict_insert(void* _self, void* key, void* uptr) {
+  uu_dict_mut_t self = (uu_dict_mut_t)_self;
+  mtree_mut_t bucket = NULL;
+  mnode_mut_t node   = NULL;
+  uint32_t hash      = 0;
+  int result         = 0;
 
   assert(self);
 
-#ifdef UU_DICT_CHECK
-  __uu_dict_check(self->root, self->cmp_fn);
-#endif
+  hash   = MurmurHash3_32(key, self->ksize, self->seed);
+  result = __uu_dict_find(self, hash, key, self->cmp_fn, &bucket, &node);
+  uu_end_if(result, err0);
 
-  while (link[0]) {
-    parent = link[0];
-    result = self->cmp_fn(key, &parent->key[0]);
-    uu_end_if(result == 0, err0);
+  node = (mnode_mut_t)UU_MALLOC(sizeof(mnode_t) + self->ksize);
+  uu_end_if(!node, err0);
 
-    link = (result < 0) ? &parent->left : &parent->right;
-  }
+  node->l = node->r = node->p = NULL;
+  node->h                     = 1;
+  node->hash                  = hash;
+  node->uptr                  = (intptr_t)uptr;
 
-  node = (uu_node_mut_t)UU_MALLOC(sizeof(uu_node_t) + self->ksize);
+  memcpy(&node->key[0], key, self->ksize);
 
-  node->parent = parent;
-  node->height = 1;
-  node->uptr   = uptr;
-  node->left = node->right = NULL;
+  bucket = &self->buckets[hash & self->buckets_mask];
+  mtree_add(bucket, node, self->cmp_fn);
 
-  *link = node;
   self->len++;
 
-  __uu_dict_insert_rebalance(self, node);
-
-  return &node->key[0];
-
-err0:
-  return NULL;
-}
-
-int __uu_dict_each(void* _self, int init, void* out[2]) {
-  uu_dict_mut_t self = (uu_dict_mut_t)_self;
-  uu_node_mut_t iter, last;
-
-  assert(self);
-  uu_chk_if(self->len == 0, !!0);
-
-  if (init) {
-    self->iter = NULL;
-    return !!0;
-  }
-
-  if (!self->iter) {
-    iter = self->root;
-
-    while (iter->left) {
-      iter = iter->left;
-    }
-  } else {
-    iter = self->iter;
-
-    if (iter->right) {
-      iter = iter->right;
-
-      while (iter->left) {
-        iter = iter->left;
-      }
-    } else {
-      while (1) {
-        last = iter;
-        iter = iter->parent;
-
-        if (!iter || iter->left == last) {
-          break;
-        }
-      }
-    }
-  }
-
-  uu_end_if(!iter, err0);
-
-  self->iter = iter;
-
-  out[0] = &iter->key[0];
-  out[1] = iter->uptr;
+  __uu_dict_rehash(self);
 
   return !0;
 
@@ -584,8 +680,54 @@ err0:
   return !!0;
 }
 
-#define NODE_LEFT  0
-#define NODE_RIGHT 1
+int __uu_dict_each(void* _self, int init, void* out[2]) {
+  uu_dict_mut_t self = (uu_dict_mut_t)_self;
+  mnode_mut_t iter   = NULL;
+
+  assert(self);
+  uu_chk_if(self->len == 0, !!0);
+
+  if (init) {
+    self->iter_node   = NULL;
+    self->iter_bucket = self->buckets;
+    return !!0;
+  }
+
+  iter = self->iter_node;
+  do {
+    if (!iter) {
+      iter = mtree_first(self->iter_bucket);
+    } else {
+      iter = mtree_next(iter);
+    }
+
+    if (iter) {
+      break;
+    }
+
+    self->iter_bucket++;
+
+    if (self->iter_bucket == self->buckets + self->buckets_mask + 1) {
+      self->iter_bucket = self->obuckets;
+    }
+  } while (self->iter_bucket != self->obuckets + self->obuckets_idx);
+
+  uu_end_if(!iter, err0);
+
+  self->iter_node = iter;
+
+  out[0] = &iter->key[0];
+  out[1] = (void*)iter->uptr;
+
+  return !0;
+
+err0:
+  return !!0;
+}
+
+#if 0
+#  define NODE_LEFT  0
+#  define NODE_RIGHT 1
 
 struct uu_nbl_t;
 typedef struct uu_nbl_t* uu_nbl_mut_t;
@@ -671,3 +813,4 @@ void __uu_dict_dump(void* _self, uu_dict_dump_fn dump_fn) {
 
   uu_vec_deinit(stack);
 };
+#endif

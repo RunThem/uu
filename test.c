@@ -69,12 +69,15 @@ void dict() {
 
   printf("  dict.at ok\n");
 
-  i = 0;
+  int sum = (0 + COUNT - 1) * COUNT / 2;
+  i       = 0;
   uu_dict_each(d, key, int*, uptr) {
     assert(key * 3 == (int)(intptr_t)uptr);
     i++;
+    sum -= key;
   }
 
+  assert(sum == 0);
   assert(COUNT == i);
 
   printf("  dict.each ok\n");

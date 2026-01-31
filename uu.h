@@ -19,13 +19,6 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
 /***************************************************************************************************
  * Memory allocator
  **************************************************************************************************/
-#if 0
-#  define UU_MEMORY
-#  define UU_MALLOC(size)
-#  define UU_REALLOC(ptr, size)
-#  define UU_FREE(ptr)
-#endif
-
 #ifndef UU_MEMORY
 #  include <stdlib.h>
 #  define UU_MALLOC(size)       malloc(size)
@@ -822,20 +815,12 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
  */
 #define uu_dict_insert(self, _key, _uptr)                                                          \
   ({                                                                                               \
-    extern void* __uu_dict_insert(void*, void*, void*);                                            \
+    extern int __uu_dict_insert(void*, void*, void*);                                              \
                                                                                                    \
-    int __result__            = !!0;                                                               \
     void* __uptr__            = _uptr;                                                             \
     __typeof__(*self) __key__ = _key;                                                              \
-    __typeof__(self) __mut__ =                                                                     \
-        (__typeof__(self))__uu_dict_insert((void*)self, (void*)&__key__, __uptr__);                \
                                                                                                    \
-    if (__mut__) {                                                                                 \
-      *__mut__   = __key__;                                                                        \
-      __result__ = !0;                                                                             \
-    };                                                                                             \
-                                                                                                   \
-    __result__;                                                                                    \
+    __uu_dict_insert((void*)self, (void*)&__key__, __uptr__);                                      \
   })
 
 /**
