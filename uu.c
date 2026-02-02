@@ -1,7 +1,7 @@
 #include "uu.h"
 
 #include <assert.h>
-#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define UU_DICT_NBL_STACK_MAX 64
