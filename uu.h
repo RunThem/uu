@@ -864,7 +864,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
                                                                                                    \
            if (__result__) {                                                                       \
              key  = *__out__[0];                                                                   \
-             uptr = __out__[1];                                                                    \
+             uptr = (type)(void*)__out__[1];                                                       \
            }                                                                                       \
                                                                                                    \
            __result__;                                                                             \

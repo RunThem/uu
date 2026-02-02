@@ -8,6 +8,10 @@
 
 const int COUNT = 10000;
 
+typedef struct {
+  int age;
+} user_t;
+
 uu_cmp_fn_def(int, x, y, x - y);
 
 void shuffle(int* array, int len) {
@@ -34,6 +38,7 @@ void dict() {
 
   int i                = 0;
   int* array           = calloc(sizeof(int), COUNT);
+  user_t** udata       = calloc(sizeof(user_t*), COUNT);
   uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
 
   assert(d);
@@ -41,6 +46,7 @@ void dict() {
 
   for (i = 0; i < COUNT; i++) {
     array[i] = i;
+    udata[i] = calloc(sizeof(user_t), 1);
   }
 
   printf("  env init ok\n");
@@ -48,7 +54,8 @@ void dict() {
   shuffle(array, COUNT);
 
   for (i = 0; i < COUNT; i++) {
-    uu_dict_insert(d, array[i], (void*)(intptr_t)(array[i] * 3));
+    udata[i]->age = array[i] * 3;
+    uu_dict_insert(d, array[i], udata[i]);
   }
 
   assert(COUNT == i);
@@ -60,19 +67,22 @@ void dict() {
   shuffle(array, COUNT);
 
   for (i = 0; i < COUNT; i++) {
-    assert((array[i] * 3) == (int)(intptr_t)uu_dict_at(d, array[i]));
+    user_t* uptr = uu_dict_at(d, array[i]);
+    assert(array[i] * 3 == uptr->age);
   }
 
   assert(COUNT == i);
   assert(COUNT == uu_dict_len(d));
   assert(!uu_dict_is_empty(d));
+  assert(uu_dict_any_if(d, key, user_t*, uptr, uptr->age == 0));
+  assert(!uu_dict_all_if(d, key, user_t*, uptr, uptr->age == 0));
 
   printf("  dict.at ok\n");
 
   int sum = (0 + COUNT - 1) * COUNT / 2;
   i       = 0;
-  uu_dict_each(d, key, int*, uptr) {
-    assert(key * 3 == (int)(intptr_t)uptr);
+  uu_dict_each(d, key, user_t*, uptr) {
+    assert(key * 3 == uptr->age);
     i++;
     sum -= key;
   }
@@ -85,7 +95,8 @@ void dict() {
   shuffle(array, COUNT);
 
   for (i = 0; i < COUNT; i++) {
-    assert((array[i] * 3) == (int)(intptr_t)uu_dict_remove(d, array[i]));
+    user_t* uptr = uu_dict_remove(d, array[i]);
+    assert((array[i] * 3) == uptr->age);
   }
 
   assert(COUNT == i);
