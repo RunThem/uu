@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include <assert.h>
 #include <stdint.h>
 
 #define uu_cmp_fn_def(type, x, y, ...)                                                             \
