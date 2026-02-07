@@ -60,6 +60,41 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
   })
 
 /**
+ * ::Vec<T>::clear(self) -> !
+ *
+ * ```c
+  {
+    uu_vec(int) v = uu_vec_init(v);
+
+    uu_vec_insert_tail(v, 0); // {0}
+    assert(1 == uu_vec_len(v));
+
+    uu_vec_clear(v);
+    assert(v);
+    assert(0 == uu_vec_len(v));
+  }
+ * ```
+ */
+#define uu_vec_clear(self)                                                                         \
+  do {                                                                                             \
+    extern void __uu_vec_clear(void*);                                                             \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    uu_vec_each(self, it) {                                                                        \
+      __VA_ARGS__;                                                                                 \
+                                                                                                   \
+      (void)it;                                                                                    \
+    };                                                                                             \
+                                                                                                   \
+    __uu_vec_clear((void*)self);                                                                   \
+  } while (0)
+
+/**
  * ::Vec<T>::deinit(self) -> !
  * ::Vec<T>::deinit(self, ...) -> !
  *
@@ -71,16 +106,16 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
     assert(1 == uu_vec_len(v));
 
     uu_vec_deinit(v);
-    assert(v == NULL);
+    assert(!v);
   }
   {
-    uu_vec(int*) w = uu_vec_init(w);
+    uu_vec(int*) v = uu_vec_init(v);
 
-    uu_vec_insert_tail(w, malloc(sizeof(int))); // {0xptr}
-    assert(1 == uu_vec_len(w));
+    uu_vec_insert_tail(v, malloc(sizeof(int))); // {0xptr}
+    assert(1 == uu_vec_len(v));
 
-    uu_vec_deinit(w, { free(it); });
-    assert(w == NULL);
+    uu_vec_deinit(v, { free(it); });
+    assert(!v);
   }
  * ```
  */
@@ -715,6 +750,44 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   })
 
 /**
+ * ::Dict<K, V = void*>::clear(self) -> !
+ * ::Dict<K, V = void*>::clear(self, ...) -> !
+ *
+ * ```c
+  {
+    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+    assert(d);
+
+    uu_dict_insert(d, 1, (void*)0x11);
+    assert(1 == uu_dict_len(d));
+
+    uu_dict_clear(d);
+    assert(d);
+    assert(0 == uu_dict_len(d));
+  }
+ * ```
+ */
+#define uu_dict_clear(self, ...)                                                                   \
+  do {                                                                                             \
+    extern void __uu_dict_clear(void*);                                                            \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    uu_dict_each(self, key, void*, uptr) {                                                         \
+      __VA_ARGS__;                                                                                 \
+                                                                                                   \
+      (void)key;                                                                                   \
+      (void)uptr;                                                                                  \
+    };                                                                                             \
+                                                                                                   \
+    __uu_dict_clear((void*)self);                                                                  \
+  } while (0)
+
+/**
  * ::Dict<K, V = void*>::deinit(self) -> !
  * ::Dict<K, V = void*>::deinit(self, ...) -> !
  *
@@ -737,6 +810,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
       void* nil             = NULL;                                                                \
       assert(Self != nil);                                                                         \
     }                                                                                              \
+                                                                                                   \
     uu_dict_each(self, key, void*, uptr) {                                                         \
       __VA_ARGS__;                                                                                 \
                                                                                                    \

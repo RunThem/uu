@@ -63,6 +63,12 @@ err0:
   return NULL;
 }
 
+void __uu_vec_clear(void* _self) {
+  uu_vec_mut_t self = (uu_vec_mut_t)_self;
+
+  self->len = 0;
+}
+
 void __uu_vec_deinit(void* _self) {
   uu_vec_mut_t self = (uu_vec_mut_t)_self;
 
@@ -538,7 +544,7 @@ err0:
   return NULL;
 }
 
-void __uu_dict_deinit(void* _self) {
+void __uu_dict_clear(void* _self) {
   uu_dict_mut_t self = (uu_dict_mut_t)_self;
   mtree_mut_t bucket = NULL;
   mnode_mut_t node   = NULL;
@@ -558,8 +564,22 @@ void __uu_dict_deinit(void* _self) {
     }
   } while (bucket != self->obuckets + self->obuckets_idx);
 
+  if (self->obuckets) {
+    UU_FREE(self->buckets);
+    self->obuckets = NULL;
+  }
+
+  self->len           = 0;
+  self->obuckets_idx  = 0;
+  self->obuckets_mask = 0;
+}
+
+void __uu_dict_deinit(void* _self) {
+  uu_dict_mut_t self = (uu_dict_mut_t)_self;
+
+  __uu_dict_clear(self);
+
   UU_FREE(self->buckets);
-  UU_FREE(self->obuckets);
   UU_FREE(self);
 }
 
