@@ -66,8 +66,6 @@ err0:
 void __uu_vec_deinit(void* _self) {
   uu_vec_mut_t self = (uu_vec_mut_t)_self;
 
-  assert(self);
-
   UU_FREE(self->items);
   UU_FREE(self);
 }
@@ -75,25 +73,17 @@ void __uu_vec_deinit(void* _self) {
 uint32_t __uu_vec_len(void* _self) {
   uu_vec_mut_t self = (uu_vec_mut_t)_self;
 
-  assert(self);
-
   return self->len;
 }
 
 void* __uu_vec_at(void* _self, uint32_t idx) {
   uu_vec_mut_t self = (uu_vec_mut_t)_self;
 
-  assert(self);
-  assert(idx < self->len);
-
-  return (self->items + self->itsize * (idx));
+  return at(idx);
 }
 
 void* __uu_vec_insert(void* _self, uint32_t idx) {
   uu_vec_mut_t self = (uu_vec_mut_t)_self;
-
-  assert(self);
-  assert(idx <= self->len);
 
   /* resize */
   if (self->len == self->cap) {
@@ -119,9 +109,6 @@ err0:
 void __uu_vec_remove(void* _self, uint32_t idx) {
   uu_vec_mut_t self = (uu_vec_mut_t)_self;
 
-  assert(self);
-  assert(idx < self->len);
-
   if (idx != self->len - 1) {
     memmove(at(idx), at(idx + 1), (self->len - idx - 1) * self->itsize);
   }
@@ -131,8 +118,6 @@ void __uu_vec_remove(void* _self, uint32_t idx) {
 
 void* __uu_vec_each(void* _self, int ev) {
   uu_vec_mut_t self = (uu_vec_mut_t)_self;
-
-  assert(self);
 
   switch (ev) {
     case 1: self->idx = 0; return NULL;
@@ -149,8 +134,6 @@ void* __uu_vec_each(void* _self, int ev) {
 
 void __uu_vec_sort(void* _self, uu_cmp_fn cmp_fn) {
   uu_vec_mut_t self = (uu_vec_mut_t)_self;
-
-  assert(self);
 
   qsort(self->items, self->len, self->itsize, cmp_fn);
 }
@@ -393,7 +376,7 @@ typedef struct uu_dict_t {
   mnode_mut_t iter_node;
 } uu_dict_t;
 
-uint32_t MurmurHash3_32(const void* data, int len, uint32_t seed) {
+static inline uint32_t MurmurHash3_32(const void* data, int len, uint32_t seed) {
   const int nblocks      = len / 4;
   uint32_t h1            = seed;
   uint32_t k1            = 0;
@@ -447,7 +430,7 @@ uint32_t MurmurHash3_32(const void* data, int len, uint32_t seed) {
   return h1;
 }
 
-void __uu_dict_rehash(uu_dict_mut_t self) {
+static void __uu_dict_rehash(uu_dict_mut_t self) {
   mtree_mut_t buckets  = NULL;
   mtree_mut_t bucket   = NULL;
   mtree_mut_t obucket  = NULL;
@@ -527,8 +510,6 @@ static inline int __uu_dict_find(uu_dict_mut_t self,
 void* __uu_dict_init(uint32_t ksize, uu_cmp_fn cmp_fn) {
   uu_dict_mut_t self = NULL;
 
-  assert(cmp_fn);
-
   self = (uu_dict_mut_t)UU_MALLOC(sizeof(uu_dict_t));
   uu_end_if(!self, err0);
 
@@ -563,8 +544,6 @@ void __uu_dict_deinit(void* _self) {
   mnode_mut_t node   = NULL;
   mnode_mut_t next   = NULL;
 
-  assert(self);
-
   bucket = &self->buckets[0];
 
   do {
@@ -587,8 +566,6 @@ void __uu_dict_deinit(void* _self) {
 uint32_t __uu_dict_len(void* _self) {
   uu_dict_mut_t self = (uu_dict_mut_t)_self;
 
-  assert(self);
-
   return self->len;
 }
 
@@ -599,7 +576,6 @@ void* __uu_dict_at(void* _self, void* key) {
   uint32_t hash      = 0;
   int result         = 0;
 
-  assert(self);
   uu_chk_if(self->len == 0, NULL);
 
   hash   = MurmurHash3_32(key, self->ksize, self->seed);
@@ -614,44 +590,12 @@ err0:
   return NULL;
 }
 
-void* __uu_dict_remove(void* _self, void* key) {
-  uu_dict_mut_t self = (uu_dict_mut_t)_self;
-  mtree_mut_t bucket = NULL;
-  mnode_mut_t node   = NULL;
-  void* uptr         = NULL;
-  uint32_t hash      = 0;
-  int result         = 0;
-
-  assert(self);
-  uu_chk_if(self->len == 0, NULL);
-
-  hash   = MurmurHash3_32(key, self->ksize, self->seed);
-  result = __uu_dict_find(self, hash, key, self->cmp_fn, &bucket, &node);
-  uu_end_if(!result, err0);
-
-  mtree_del(bucket, node);
-
-  uptr = (void*)node->uptr;
-  UU_FREE(node);
-
-  self->len--;
-
-  // __uu_dict_rehash(self);
-
-  return uptr;
-
-err0:
-  return NULL;
-}
-
 int __uu_dict_insert(void* _self, void* key, void* uptr) {
   uu_dict_mut_t self = (uu_dict_mut_t)_self;
   mtree_mut_t bucket = NULL;
   mnode_mut_t node   = NULL;
   uint32_t hash      = 0;
   int result         = 0;
-
-  assert(self);
 
   hash   = MurmurHash3_32(key, self->ksize, self->seed);
   result = __uu_dict_find(self, hash, key, self->cmp_fn, &bucket, &node);
@@ -680,11 +624,39 @@ err0:
   return !!0;
 }
 
+void* __uu_dict_remove(void* _self, void* key) {
+  uu_dict_mut_t self = (uu_dict_mut_t)_self;
+  mtree_mut_t bucket = NULL;
+  mnode_mut_t node   = NULL;
+  void* uptr         = NULL;
+  uint32_t hash      = 0;
+  int result         = 0;
+
+  uu_chk_if(self->len == 0, NULL);
+
+  hash   = MurmurHash3_32(key, self->ksize, self->seed);
+  result = __uu_dict_find(self, hash, key, self->cmp_fn, &bucket, &node);
+  uu_end_if(!result, err0);
+
+  mtree_del(bucket, node);
+
+  uptr = (void*)node->uptr;
+  UU_FREE(node);
+
+  self->len--;
+
+  // __uu_dict_rehash(self);
+
+  return uptr;
+
+err0:
+  return NULL;
+}
+
 int __uu_dict_each(void* _self, int init, void* out[2]) {
   uu_dict_mut_t self = (uu_dict_mut_t)_self;
   mnode_mut_t iter   = NULL;
 
-  assert(self);
   uu_chk_if(self->len == 0, !!0);
 
   if (init) {

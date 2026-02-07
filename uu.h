@@ -88,6 +88,12 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
   do {                                                                                             \
     extern void __uu_vec_deinit(void*);                                                            \
                                                                                                    \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
     uu_vec_each(self, it) {                                                                        \
       __VA_ARGS__;                                                                                 \
                                                                                                    \
@@ -116,6 +122,12 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
   ({                                                                                               \
     extern uint32_t __uu_vec_len(void*);                                                           \
                                                                                                    \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
     __uu_vec_len((void*)self);                                                                     \
   })
 
@@ -135,6 +147,12 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
 #define uu_vec_is_empty(self)                                                                      \
   ({                                                                                               \
     extern uint32_t __uu_vec_len(void*);                                                           \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
                                                                                                    \
     0 == __uu_vec_len((void*)self);                                                                \
   })
@@ -160,13 +178,20 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
 #define uu_vec_swap_tail(self, _val) uu_vec_swap(self, uu_vec_len(self) - 1, _val)
 #define uu_vec_swap(self, _idx, _val)                                                              \
   do {                                                                                             \
+    extern uint32_t __uu_vec_len(void*);                                                           \
     extern void* __uu_vec_at(void*, uint32_t);                                                     \
                                                                                                    \
-    uint32_t __idx__          = _idx;                                                              \
-    __typeof__(*self) __val__ = _val;                                                              \
-    __typeof__(self) __mut__  = (__typeof__(self))__uu_vec_at((void*)self, __idx__);               \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
                                                                                                    \
-    *__mut__ = __val__;                                                                            \
+      uint32_t Len = __uu_vec_len((void*)self);                                                    \
+      uint32_t Idx = _idx;                                                                         \
+      assert(Idx < Len);                                                                           \
+    }                                                                                              \
+                                                                                                   \
+    *(__typeof__(self))__uu_vec_at((void*)self, _idx) = _val;                                      \
   } while (0)
 
 /**
@@ -193,48 +218,20 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
 #define uu_vec_at_tail(self) uu_vec_at(self, uu_vec_len(self) - 1)
 #define uu_vec_at(self, _idx)                                                                      \
   ({                                                                                               \
+    extern uint32_t __uu_vec_len(void*);                                                           \
     extern void* __uu_vec_at(void*, uint32_t);                                                     \
                                                                                                    \
-    uint32_t __idx__         = _idx;                                                               \
-    __typeof__(self) __mut__ = (__typeof__(self))__uu_vec_at((void*)self, __idx__);                \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
                                                                                                    \
-    *__mut__;                                                                                      \
-  })
-
-/**
- * ::Vec<T>::remove(self, idx: uint32_t) -> T
- * ::Vec<T>::remove_head(self) -> T
- * ::Vec<T>::remove_tail(self) -> T
- *
- * ```c
-  {
-    uu_vec(int) v = uu_vec_init(v);
-
-    uu_vec_insert_tail(v, 0);  // {0}
-    uu_vec_insert_tail(v, 1);  // {0, 1}
-    uu_vec_insert_tail(v, 2);  // {0, 1, 2}
-    assert(3 == uu_vec_len(v));
-
-    assert(1 == uu_vec_remove(v, 1));    // {0, 2}
-    assert(2 == uu_vec_remove_tail(v));  // {0}
-    assert(0 == uu_vec_remove_head(v));  // {}
-    assert(0 == uu_vec_len(v));
-  }
- * ```
- */
-#define uu_vec_remove_head(self) uu_vec_remove(self, 0)
-#define uu_vec_remove_tail(self) uu_vec_remove(self, uu_vec_len(self) - 1)
-#define uu_vec_remove(self, _idx)                                                                  \
-  ({                                                                                               \
-    extern void* __uu_vec_at(void*, uint32_t);                                                     \
-    extern void __uu_vec_remove(void*, uint32_t);                                                  \
+      uint32_t Len = __uu_vec_len((void*)self);                                                    \
+      uint32_t Idx = _idx;                                                                         \
+      assert(Idx < Len);                                                                           \
+    }                                                                                              \
                                                                                                    \
-    uint32_t __idx__          = _idx;                                                              \
-    __typeof__(*self) __val__ = *(__typeof__(self))__uu_vec_at((void*)self, __idx__);              \
-                                                                                                   \
-    __uu_vec_remove((void*)self, __idx__);                                                         \
-                                                                                                   \
-    __val__;                                                                                       \
+    *(__typeof__(self))__uu_vec_at((void*)self, _idx);                                             \
   })
 
 /**
@@ -267,14 +264,67 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
 #define uu_vec_insert_tail(self, _val) uu_vec_insert(self, uu_vec_len(self), _val)
 #define uu_vec_insert(self, _idx, _val)                                                            \
   do {                                                                                             \
+    extern uint32_t __uu_vec_len(void*);                                                           \
     extern void* __uu_vec_insert(void*, uint32_t);                                                 \
                                                                                                    \
-    uint32_t __idx__          = _idx;                                                              \
-    __typeof__(*self) __val__ = _val;                                                              \
-    __typeof__(self) __mut__  = (__typeof__(self))__uu_vec_insert((void*)self, __idx__);           \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
                                                                                                    \
-    *__mut__ = __val__;                                                                            \
+      uint32_t Len = __uu_vec_len((void*)self);                                                    \
+      uint32_t Idx = _idx;                                                                         \
+      assert(Idx <= Len);                                                                          \
+    }                                                                                              \
+                                                                                                   \
+    *(__typeof__(self))__uu_vec_insert((void*)self, _idx) = _val;                                  \
   } while (0)
+
+/**
+ * ::Vec<T>::remove(self, idx: uint32_t) -> T
+ * ::Vec<T>::remove_head(self) -> T
+ * ::Vec<T>::remove_tail(self) -> T
+ *
+ * ```c
+  {
+    uu_vec(int) v = uu_vec_init(v);
+
+    uu_vec_insert_tail(v, 0);  // {0}
+    uu_vec_insert_tail(v, 1);  // {0, 1}
+    uu_vec_insert_tail(v, 2);  // {0, 1, 2}
+    assert(3 == uu_vec_len(v));
+
+    assert(1 == uu_vec_remove(v, 1));    // {0, 2}
+    assert(2 == uu_vec_remove_tail(v));  // {0}
+    assert(0 == uu_vec_remove_head(v));  // {}
+    assert(0 == uu_vec_len(v));
+  }
+ * ```
+ */
+#define uu_vec_remove_head(self) uu_vec_remove(self, 0)
+#define uu_vec_remove_tail(self) uu_vec_remove(self, uu_vec_len(self) - 1)
+#define uu_vec_remove(self, _idx)                                                                  \
+  ({                                                                                               \
+    extern uint32_t __uu_vec_len(void*);                                                           \
+    extern void* __uu_vec_at(void*, uint32_t);                                                     \
+    extern void __uu_vec_remove(void*, uint32_t);                                                  \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+                                                                                                   \
+      uint32_t Len = __uu_vec_len((void*)self);                                                    \
+      uint32_t Idx = _idx;                                                                         \
+      assert(Idx < Len);                                                                           \
+    }                                                                                              \
+                                                                                                   \
+    __typeof__(*self) __val__ = *(__typeof__(self))__uu_vec_at((void*)self, _idx);                 \
+                                                                                                   \
+    __uu_vec_remove((void*)self, _idx);                                                            \
+                                                                                                   \
+    __val__;                                                                                       \
+  })
 
 /**
  * ::Vec<T>::each(self, it) -> Iter<T>
@@ -303,6 +353,13 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
 #define uu_vec_each(self, it)                                                                      \
   {                                                                                                \
     extern void* __uu_vec_each(void*, int);                                                        \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
     (void)__uu_vec_each((void*)self, 1);                                                           \
   };                                                                                               \
                                                                                                    \
@@ -343,6 +400,13 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
 #define uu_vec_reach(self, it)                                                                     \
   {                                                                                                \
     extern void* __uu_vec_each(void*, int);                                                        \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
     (void)__uu_vec_each(self, 3);                                                                  \
   };                                                                                               \
                                                                                                    \
@@ -379,6 +443,7 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
 #define uu_vec_count_if(self, it, cond)                                                            \
   ({                                                                                               \
     uint32_t __cnt__ = 0;                                                                          \
+                                                                                                   \
     uu_vec_each_if(self, it, cond) __cnt__++;                                                      \
                                                                                                    \
     __cnt__;                                                                                       \
@@ -477,6 +542,12 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
 #define uu_vec_map_by(self, it, ...)                                                               \
   do {                                                                                             \
     extern void* __uu_vec_each(void*, int);                                                        \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
                                                                                                    \
     (void)__uu_vec_each((void*)self, 1);                                                           \
                                                                                                    \
@@ -583,6 +654,12 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
   do {                                                                                             \
     extern void* __uu_vec_sort(void*, uu_cmp_fn);                                                  \
                                                                                                    \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
     __uu_vec_sort((void*)self, cmp_fn);                                                            \
   } while (0)
 
@@ -626,6 +703,12 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   ({                                                                                               \
     extern void* __uu_dict_init(uint32_t, uu_cmp_fn);                                              \
                                                                                                    \
+    {                                                                                              \
+      uu_cmp_fn CmpFn = cmp_fn;                                                                    \
+      void* nil       = NULL;                                                                      \
+      assert(CmpFn != nil);                                                                        \
+    }                                                                                              \
+                                                                                                   \
     self = (__typeof__(self))__uu_dict_init(sizeof(*self), cmp_fn);                                \
                                                                                                    \
     self;                                                                                          \
@@ -649,6 +732,11 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   do {                                                                                             \
     extern void __uu_dict_deinit(void*);                                                           \
                                                                                                    \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
     uu_dict_each(self, key, void*, uptr) {                                                         \
       __VA_ARGS__;                                                                                 \
                                                                                                    \
@@ -682,6 +770,11 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   ({                                                                                               \
     extern uint32_t __uu_dict_len(void*);                                                          \
                                                                                                    \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
     __uu_dict_len((void*)self);                                                                    \
   })
 
@@ -707,6 +800,12 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
 #define uu_dict_is_empty(self)                                                                     \
   ({                                                                                               \
     extern uint32_t __uu_dict_len(void*);                                                          \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
                                                                                                    \
     0 == __uu_dict_len((void*)self);                                                               \
   })
@@ -736,48 +835,15 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   ({                                                                                               \
     extern void* __uu_dict_at(void*, void*);                                                       \
                                                                                                    \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
     __typeof__(*self) __key__ = _key;                                                              \
                                                                                                    \
     __uu_dict_at((void*)self, (void*)&__key__);                                                    \
-  })
-
-/**
- * ::Dict<K, V = void*>::remove(self, key: K) -> V
- *
- * ```c
-  {
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
-
-    uu_dict_insert(d, 1, (void*)0x11);
-    uu_dict_insert(d, 2, (void*)0x22);
-    uu_dict_insert(d, 3, (void*)0x33);
-    uu_dict_insert(d, 4, (void*)0x44);
-    uu_dict_insert(d, 5, (void*)0x55);
-
-    void* result = uu_dict_remove(d, 3);
-    assert(result);
-
-    result = uu_dict_remove(d, 3);
-    assert(!result);
-
-    assert((void*)0x11 == uu_dict_at(d, 1));
-    assert((void*)0x22 == uu_dict_at(d, 2));
-    assert((void*)0x44 == uu_dict_at(d, 4));
-    assert((void*)0x55 == uu_dict_at(d, 5));
-
-    assert((void*)NULL == uu_dict_at(d, 3));
-
-    assert(4 == uu_dict_len(d));
-  }
- * ```
- */
-#define uu_dict_remove(self, _key)                                                                 \
-  ({                                                                                               \
-    extern void* __uu_dict_remove(void*, void*);                                                   \
-                                                                                                   \
-    __typeof__(*self) __key__ = _key;                                                              \
-                                                                                                   \
-    __uu_dict_remove((void*)self, (void*)&__key__);                                                \
   })
 
 /**
@@ -817,10 +883,61 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
   ({                                                                                               \
     extern int __uu_dict_insert(void*, void*, void*);                                              \
                                                                                                    \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
     void* __uptr__            = _uptr;                                                             \
     __typeof__(*self) __key__ = _key;                                                              \
                                                                                                    \
     __uu_dict_insert((void*)self, (void*)&__key__, __uptr__);                                      \
+  })
+
+/**
+ * ::Dict<K, V = void*>::remove(self, key: K) -> V
+ *
+ * ```c
+  {
+    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+
+    uu_dict_insert(d, 1, (void*)0x11);
+    uu_dict_insert(d, 2, (void*)0x22);
+    uu_dict_insert(d, 3, (void*)0x33);
+    uu_dict_insert(d, 4, (void*)0x44);
+    uu_dict_insert(d, 5, (void*)0x55);
+
+    void* result = uu_dict_remove(d, 3);
+    assert(result);
+
+    result = uu_dict_remove(d, 3);
+    assert(!result);
+
+    assert((void*)0x11 == uu_dict_at(d, 1));
+    assert((void*)0x22 == uu_dict_at(d, 2));
+    assert((void*)0x44 == uu_dict_at(d, 4));
+    assert((void*)0x55 == uu_dict_at(d, 5));
+
+    assert((void*)NULL == uu_dict_at(d, 3));
+
+    assert(4 == uu_dict_len(d));
+  }
+ * ```
+ */
+#define uu_dict_remove(self, _key)                                                                 \
+  ({                                                                                               \
+    extern void* __uu_dict_remove(void*, void*);                                                   \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    __typeof__(*self) __key__ = _key;                                                              \
+                                                                                                   \
+    __uu_dict_remove((void*)self, (void*)&__key__);                                                \
   })
 
 /**
@@ -852,6 +969,13 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
 #define uu_dict_each(self, key, type, uptr)                                                        \
   {                                                                                                \
     extern int __uu_dict_each(void*, int, void* [2]);                                              \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
     (void)__uu_dict_each((void*)self, !0, NULL);                                                   \
   }                                                                                                \
                                                                                                    \
