@@ -598,11 +598,11 @@ void* __uu_dict_at(void* _self, void* key) {
 
   uu_chk_if(self->len == 0, NULL);
 
+  __uu_dict_rehash(self);
+
   hash   = MurmurHash3_32(key, self->ksize, self->seed);
   result = __uu_dict_find(self, hash, key, self->cmp_fn, &bucket, &node);
   uu_end_if(!result, err0);
-
-  __uu_dict_rehash(self);
 
   return (void*)node->uptr;
 
@@ -615,6 +615,8 @@ int __uu_dict_insert(void* _self, void* key, void* uptr) {
   mtree_mut_t bucket = NULL;
   mnode_mut_t node   = NULL;
   uint32_t hash      = 0;
+
+  __uu_dict_rehash(self);
 
   hash = MurmurHash3_32(key, self->ksize, self->seed);
 
@@ -640,8 +642,6 @@ int __uu_dict_insert(void* _self, void* key, void* uptr) {
 
   self->len++;
 
-  __uu_dict_rehash(self);
-
   return !0;
 
 err0:
@@ -658,6 +658,8 @@ void* __uu_dict_remove(void* _self, void* key) {
 
   uu_chk_if(self->len == 0, NULL);
 
+  __uu_dict_rehash(self);
+
   hash   = MurmurHash3_32(key, self->ksize, self->seed);
   result = __uu_dict_find(self, hash, key, self->cmp_fn, &bucket, &node);
   uu_end_if(!result, err0);
@@ -668,8 +670,6 @@ void* __uu_dict_remove(void* _self, void* key) {
   UU_FREE(node);
 
   self->len--;
-
-  __uu_dict_rehash(self);
 
   return uptr;
 
