@@ -502,7 +502,7 @@ static inline int __uu_dict_find(uu_dict_mut_t self,
   bucket = &self->buckets[hash & self->buckets_mask];
   node   = mtree_at(bucket, hash, key, cmp_fn);
 
-  if (self->obuckets && !node && ((hash & self->obuckets_mask) < self->obuckets_idx)) {
+  if (!node && ((hash & self->obuckets_mask) < self->obuckets_idx)) {
     bucket = &self->obuckets[hash & self->obuckets_mask];
     node   = mtree_at(bucket, hash, key, cmp_fn);
   }
@@ -669,7 +669,7 @@ void* __uu_dict_remove(void* _self, void* key) {
 
   self->len--;
 
-  // __uu_dict_rehash(self);
+  __uu_dict_rehash(self);
 
   return uptr;
 
