@@ -156,7 +156,7 @@ typedef struct mnode_t {
   mnode_mut_t l, r, p;
   uint32_t h;
   uint32_t hash;
-  uintptr_t uptr;
+  void* uptr;
   uint8_t key[0];
 } mnode_t;
 
@@ -627,7 +627,7 @@ int __uu_dict_insert(void* _self, void* key, void* uptr) {
   node->l = node->r = node->p = NULL;
   node->h                     = 1;
   node->hash                  = hash;
-  node->uptr                  = (intptr_t)uptr;
+  node->uptr                  = uptr;
 
   memcpy(&node->key[0], key, self->ksize);
 
