@@ -615,11 +615,15 @@ int __uu_dict_insert(void* _self, void* key, void* uptr) {
   mtree_mut_t bucket = NULL;
   mnode_mut_t node   = NULL;
   uint32_t hash      = 0;
-  int result         = 0;
 
-  hash   = MurmurHash3_32(key, self->ksize, self->seed);
-  result = __uu_dict_find(self, hash, key, self->cmp_fn, &bucket, &node);
-  uu_end_if(result, err0);
+  hash = MurmurHash3_32(key, self->ksize, self->seed);
+
+  if ((hash & self->obuckets_mask) < self->obuckets_idx) {
+    bucket = &self->obuckets[hash & self->obuckets_mask];
+    node   = mtree_at(bucket, hash, key, self->cmp_fn);
+  }
+
+  uu_end_if(node, err0);
 
   node = (mnode_mut_t)UU_MALLOC(sizeof(mnode_t) + self->ksize);
   uu_end_if(!node, err0);
