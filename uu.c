@@ -1,6 +1,7 @@
 #include "uu.h"
 
 #include <assert.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -388,8 +389,8 @@ static inline uint32_t MurmurHash3_32(const void* data, int len, uint32_t seed) 
   uint32_t k1            = 0;
   uint32_t c1            = 0xcc9e2d51;
   uint32_t c2            = 0x1b873593;
-  const uint32_t* blocks = (const uint32_t*)(data + nblocks * 4);
-  const uint8_t* tail    = (const uint8_t*)(data + nblocks * 4);
+  const uint32_t* blocks = (const uint32_t*)((const uint8_t*)data + nblocks * 4);
+  const uint8_t* tail    = (const uint8_t*)((const uint8_t*)data + nblocks * 4);
   int i                  = 0;
 
   //----------
