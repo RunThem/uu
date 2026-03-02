@@ -1070,6 +1070,39 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
          });)
 
 /**
+ * ::Dict<K, V = void*, U: V>::find_if(self, key, U, uptr, cond) -> U
+ *
+ * ```c
+  {
+    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+
+    uu_dict_insert(d, 1, (void*)0x11);
+    uu_dict_insert(d, 2, (void*)0x22);
+    uu_dict_insert(d, 3, (void*)0x33);
+    uu_dict_insert(d, 4, (void*)0x44);
+    uu_dict_insert(d, 5, (void*)0x55);
+
+    int* uptr = uu_dict_find_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)0x33);
+    assert(uptr == (int*)(uintptr_t)0x33);
+
+    int* uptr = uu_dict_find_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)0x66);
+    assert(uptr == NULL);
+  }
+ * ```
+ */
+#define uu_dict_find_if(self, key, type, uptr, cond)                                               \
+  ({                                                                                               \
+    type __uptr__ = NULL;                                                                          \
+                                                                                                   \
+    uu_dict_each_if(self, key, type, uptr, cond) {                                                 \
+      __uptr__ = uptr;                                                                             \
+      break;                                                                                       \
+    }                                                                                              \
+                                                                                                   \
+    __uptr__;                                                                                      \
+  })
+
+/**
  * ::Dict<K, V = void*, U: V>::any_if(self, key, U, uptr, cond) -> bool
  *
  * ```c

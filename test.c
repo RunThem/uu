@@ -78,6 +78,15 @@ void dict() {
   assert(uu_dict_any_if(d, key, user_t*, uptr, uptr->age == 0));
   assert(!uu_dict_all_if(d, key, user_t*, uptr, uptr->age == 0));
 
+  user_t* found = uu_dict_find_if(d, key, user_t*, uptr, uptr->age == 99);
+  assert(found && found->age == 99);
+
+  found = uu_dict_find_if(d, key, user_t*, uptr, uptr->age > 200);
+  assert(found && found->age > 200);
+
+  found = uu_dict_find_if(d, key, user_t*, uptr, uptr->age == 999999);
+  assert(found == NULL);
+
   printf("  dict.at ok\n");
 
   int sum = (0 + COUNT - 1) * COUNT / 2;
