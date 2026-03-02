@@ -7,6 +7,14 @@
 
 #define UU_DICT_NBL_STACK_MAX 64
 
+#if defined(__GNUC__) || defined(__clang__)
+#  define likely(x)   __builtin_expect(!!(x), 1)
+#  define unlikely(x) __builtin_expect(!!(x), 0)
+#else
+#  define likely(x)   (x)
+#  define unlikely(x) (x)
+#endif
+
 /***************************************************************************************************
  * Macro
  **************************************************************************************************/
@@ -320,23 +328,21 @@ static inline mnode_mut_t mtree_next(mnode_mut_t n) {
   }
   return n;
 }
-static inline int mtree_cmp_fn(uint32_t xhash, uint32_t yhash, void* xkey, void* ykey, uu_cmp_fn cmp_fn) {
-  if (xhash != yhash) return xhash > yhash ? 1 : -1; else return cmp_fn(xkey, ykey);
-}
 static inline mnode_mut_t mtree_at(mtree_mut_t T, uint32_t hash, void* key, uu_cmp_fn cmp_fn) {
   mnode_mut_t l = T->root;
   int t;
   while (l) {
-    t = mtree_cmp_fn(hash, l->hash, key, &l->key[0], cmp_fn);
-    if (t != 0) l = (t < 0) ? l->l : l->r; else return l;
+    if (likely(hash != l->hash)) l = (hash < l->hash) ? l->l : l->r; else {
+      t = cmp_fn(key, &l->key[0]);
+      if (likely(t != 0)) l = (t < 0) ? l->l : l->r; else return l;
+    }
   }
   return NULL;
 }
 static inline void mtree_del(mtree_mut_t T, mnode_mut_t n) {
-  if (T->len == 1) T->root = NULL;
+  if (likely(T->len == 1)) T->root = NULL;
   else if (T->len == 2) {
-    if (T->root != n) { T->root->l = T->root->r = NULL; }
-    else {
+    if (T->root != n) T->root->l = T->root->r = NULL; else {
       T->root = (mnode_mut_t)((intptr_t)(n->l) | (intptr_t)(n->r));
       T->root->p = NULL;
     }
@@ -351,13 +357,14 @@ static inline int mtree_add(mtree_mut_t T, mnode_mut_t n, uu_cmp_fn cmp_fn) {
   int t = 0;
   while (l[0]) {
     p = l[0];
-    t = mtree_cmp_fn(n->hash, p->hash, &n->key[0], &p->key[0], cmp_fn);
-    if (t == 0) return !!0;
-    l = (t < 0) ? &p->l : &p->r;
+    if (likely(n->hash != p->hash)) l = (n->hash < p->hash) ? &p->l : &p->r; else {
+      t = cmp_fn(&n->key[0], &p->key[0]);
+      if (likely(t != 0)) l = (t < 0) ? &p->l : &p->r; else return !!0;
+    }
   }
   n->p = p;
   l[0] = n;
-  if (T->len == 1) p->h++; else if (T->len > 1) __mtree_put_rebalance(T, n);
+  if (likely(T->len == 1)) p->h++; else if (T->len > 1) __mtree_put_rebalance(T, n);
   T->len++;
   return !0;
 }
@@ -442,7 +449,7 @@ static void __uu_dict_resize(uu_dict_mut_t self) {
   uint32_t buckets_len = self->buckets_mask + 1;
   uint32_t limit       = self->len * 6 >> 2;
 
-  uu_chk_if(limit <= buckets_len);
+  uu_chk_if(likely(limit <= buckets_len));
 
   while (buckets_len < limit) {
     buckets_len <<= 1;
@@ -471,7 +478,7 @@ static void __uu_dict_rehash(uu_dict_mut_t self) {
   mnode_mut_t node    = NULL;
   mnode_mut_t next    = NULL;
 
-  uu_chk_if(!self->obuckets);
+  uu_chk_if(likely(!self->obuckets));
 
   while (self->obuckets_idx > 0 && !self->obuckets[--self->obuckets_idx].root) {
   }
@@ -585,7 +592,7 @@ void* __uu_dict_at(void* _self, void* key) {
     node   = mtree_at(bucket, hash, key, self->cmp_fn);
   }
 
-  uu_end_if(!node, err0);
+  uu_end_if(unlikely(!node), err0);
 
   return (void*)node->uptr;
 
@@ -604,15 +611,15 @@ int __uu_dict_insert(void* _self, void* key, void* uptr) {
 
   hash = MurmurHash3_32(key, self->ksize, self->seed);
 
-  if ((hash & self->obuckets_mask) < self->obuckets_idx) {
+  if (unlikely(self->obuckets) && (hash & self->obuckets_mask) < self->obuckets_idx) {
     bucket = &self->obuckets[hash & self->obuckets_mask];
     node   = mtree_at(bucket, hash, key, self->cmp_fn);
   }
 
-  uu_end_if(node, err0);
+  uu_end_if(unlikely(node), err0);
 
   node = (mnode_mut_t)UU_MALLOC(sizeof(mnode_t) + self->ksize);
-  uu_end_if(!node, err0);
+  uu_end_if(unlikely(!node), err0);
 
   node->l = node->r = node->p = NULL;
   node->h                     = 1;
@@ -623,7 +630,7 @@ int __uu_dict_insert(void* _self, void* key, void* uptr) {
 
   bucket = &self->buckets[hash & self->buckets_mask];
   result = mtree_add(bucket, node, self->cmp_fn);
-  uu_end_if(!result, err0);
+  uu_end_if(unlikely(!result), err0);
 
   self->len++;
 
