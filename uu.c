@@ -437,53 +437,27 @@ static inline uint32_t MurmurHash3_32(const void* data, int len, uint32_t seed) 
   return h1;
 }
 
-static void __uu_dict_rehash(uu_dict_mut_t self) {
+static void __uu_dict_resize(uu_dict_mut_t self) {
   mtree_mut_t buckets  = NULL;
-  mtree_mut_t bucket   = NULL;
-  mtree_mut_t obucket  = NULL;
-  mnode_mut_t node     = NULL;
-  mnode_mut_t next     = NULL;
-  uint32_t buckets_len = 0;
-  uint32_t limit       = 0;
+  uint32_t buckets_len = self->buckets_mask + 1;
+  uint32_t limit       = self->len * 6 >> 2;
 
-  if (self->obuckets) {
-    while (self->obuckets_idx > 0 && !self->obuckets[--self->obuckets_idx].root) {
-    }
+  uu_chk_if(limit <= buckets_len);
 
-    obucket = &self->obuckets[self->obuckets_idx];
-    while ((node = mtree_tear(obucket, &next))) {
-      node->l = node->r = node->p = NULL;
-      node->h                     = 1;
-
-      bucket = &self->buckets[node->hash & self->buckets_mask];
-      mtree_add(bucket, node, self->cmp_fn);
-    }
-
-    if (self->obuckets_idx == 0) {
-      self->obuckets      = NULL;
-      self->obuckets_mask = 0;
-    }
-  } else {
-    buckets_len = self->buckets_mask + 1;
-    limit       = self->len * 6 >> 2;
-
-    uu_chk_if(limit <= buckets_len);
-
-    while (buckets_len < limit) {
-      buckets_len <<= 1;
-    }
-
-    buckets = UU_MALLOC(sizeof(mtree_t) * buckets_len);
-    uu_end_if(!buckets, err0);
-
-    bzero(buckets, sizeof(mtree_t) * buckets_len);
-
-    self->obuckets      = self->buckets;
-    self->obuckets_mask = self->buckets_mask;
-    self->obuckets_idx  = self->buckets_mask + 1;
-    self->buckets       = buckets;
-    self->buckets_mask  = buckets_len - 1;
+  while (buckets_len < limit) {
+    buckets_len <<= 1;
   }
+
+  buckets = UU_MALLOC(sizeof(mtree_t) * buckets_len);
+  uu_end_if(!buckets, err0);
+
+  bzero(buckets, sizeof(mtree_t) * buckets_len);
+
+  self->obuckets      = self->buckets;
+  self->obuckets_mask = self->buckets_mask;
+  self->obuckets_idx  = self->buckets_mask + 1;
+  self->buckets       = buckets;
+  self->buckets_mask  = buckets_len - 1;
 
   return;
 
@@ -491,27 +465,29 @@ err0:
   return;
 }
 
-static inline int __uu_dict_find(uu_dict_mut_t self,
-                                 uint32_t hash,
-                                 void* key,
-                                 uu_cmp_fn cmp_fn,
-                                 mtree_mut_t* out_bucket,
-                                 mnode_mut_t* out_node) {
-  mtree_mut_t bucket = NULL;
-  mnode_mut_t node   = NULL;
+static void __uu_dict_rehash(uu_dict_mut_t self) {
+  mtree_mut_t bucket  = NULL;
+  mtree_mut_t obucket = NULL;
+  mnode_mut_t node    = NULL;
+  mnode_mut_t next    = NULL;
 
-  bucket = &self->buckets[hash & self->buckets_mask];
-  node   = mtree_at(bucket, hash, key, cmp_fn);
+  uu_chk_if(!self->obuckets);
 
-  if (!node && ((hash & self->obuckets_mask) < self->obuckets_idx)) {
-    bucket = &self->obuckets[hash & self->obuckets_mask];
-    node   = mtree_at(bucket, hash, key, cmp_fn);
+  while (self->obuckets_idx > 0 && !self->obuckets[--self->obuckets_idx].root) {
   }
 
-  out_bucket[0] = bucket;
-  out_node[0]   = node;
+  for (obucket = &self->obuckets[self->obuckets_idx]; (node = mtree_tear(obucket, &next));) {
+    node->l = node->r = node->p = NULL;
+    node->h                     = 1;
 
-  return !!node;
+    bucket = &self->buckets[node->hash & self->buckets_mask];
+    mtree_add(bucket, node, self->cmp_fn);
+  }
+
+  if (self->obuckets_idx == 0) {
+    self->obuckets      = NULL;
+    self->obuckets_mask = 0;
+  }
 }
 
 void* __uu_dict_init(uint32_t ksize, uu_cmp_fn cmp_fn) {
@@ -595,15 +571,21 @@ void* __uu_dict_at(void* _self, void* key) {
   mtree_mut_t bucket = NULL;
   mnode_mut_t node   = NULL;
   uint32_t hash      = 0;
-  int result         = 0;
 
   uu_chk_if(self->len == 0, NULL);
 
   __uu_dict_rehash(self);
 
   hash   = MurmurHash3_32(key, self->ksize, self->seed);
-  result = __uu_dict_find(self, hash, key, self->cmp_fn, &bucket, &node);
-  uu_end_if(!result, err0);
+  bucket = &self->buckets[hash & self->buckets_mask];
+  node   = mtree_at(bucket, hash, key, self->cmp_fn);
+
+  if (!node && ((hash & self->obuckets_mask) < self->obuckets_idx)) {
+    bucket = &self->obuckets[hash & self->obuckets_mask];
+    node   = mtree_at(bucket, hash, key, self->cmp_fn);
+  }
+
+  uu_end_if(!node, err0);
 
   return (void*)node->uptr;
 
@@ -645,6 +627,8 @@ int __uu_dict_insert(void* _self, void* key, void* uptr) {
 
   self->len++;
 
+  __uu_dict_resize(self);
+
   return !0;
 
 err0:
@@ -657,19 +641,27 @@ void* __uu_dict_remove(void* _self, void* key) {
   mnode_mut_t node   = NULL;
   void* uptr         = NULL;
   uint32_t hash      = 0;
-  int result         = 0;
 
   uu_chk_if(self->len == 0, NULL);
 
   __uu_dict_rehash(self);
 
-  hash   = MurmurHash3_32(key, self->ksize, self->seed);
-  result = __uu_dict_find(self, hash, key, self->cmp_fn, &bucket, &node);
-  uu_end_if(!result, err0);
+  hash = MurmurHash3_32(key, self->ksize, self->seed);
+
+  bucket = &self->buckets[hash & self->buckets_mask];
+  node   = mtree_at(bucket, hash, key, self->cmp_fn);
+
+  if (!node && self->obuckets && ((hash & self->obuckets_mask) < self->obuckets_idx)) {
+    bucket = &self->obuckets[hash & self->obuckets_mask];
+    node   = mtree_at(bucket, hash, key, self->cmp_fn);
+  }
+
+  uu_end_if(!node, err0);
 
   mtree_del(bucket, node);
 
   uptr = (void*)node->uptr;
+
   UU_FREE(node);
 
   self->len--;
