@@ -616,6 +616,7 @@ int __uu_dict_insert(void* _self, void* key, void* uptr) {
   mtree_mut_t bucket = NULL;
   mnode_mut_t node   = NULL;
   uint32_t hash      = 0;
+  int result         = 0;
 
   __uu_dict_rehash(self);
 
@@ -639,7 +640,8 @@ int __uu_dict_insert(void* _self, void* key, void* uptr) {
   memcpy(&node->key[0], key, self->ksize);
 
   bucket = &self->buckets[hash & self->buckets_mask];
-  mtree_add(bucket, node, self->cmp_fn);
+  result = mtree_add(bucket, node, self->cmp_fn);
+  uu_end_if(!result, err0);
 
   self->len++;
 
