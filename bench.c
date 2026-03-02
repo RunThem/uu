@@ -38,6 +38,8 @@ UBENCH_EX(Dict, at) {
   }
 
   UBENCH_DO_BENCHMARK() {
+    shuffle(array, COUNT);
+
     UBENCH_DO_BENCHMARK_BLOCK({
       for (i = 0; i < COUNT; i++) {
         uu_dict_at(d, array[i]);
@@ -59,15 +61,15 @@ UBENCH_EX(Dict, insert) {
   int* array = make_array(COUNT);
 
   UBENCH_DO_BENCHMARK() {
+    shuffle(array, COUNT);
+
     UBENCH_DO_BENCHMARK_BLOCK({
       for (i = 0; i < COUNT; i++) {
         uu_dict_insert(d, array[i], (void*)(intptr_t)array[i]);
       }
     });
 
-    for (i = 0; i < COUNT; i++) {
-      uu_dict_remove(d, array[i]);
-    }
+    uu_dict_clear(d);
   }
 
   UBENCH_DO_NOTHING(&i);
