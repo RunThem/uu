@@ -62,6 +62,7 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
 
 /**
  * ::Vec<T>::clear(self) -> !
+ * ::Vec<T>::clear(self, ...) -> !
  *
  * ```c
   {
@@ -74,9 +75,19 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
     assert(v);
     assert(0 == uu_vec_len(v));
   }
+  {
+    uu_vec(int*) v = uu_vec_init(v);
+
+    uu_vec_insert_tail(v, malloc(sizeof(int))); // {0xptr}
+    assert(1 == uu_vec_len(v));
+
+    uu_vec_clear(v, { free(it); });
+    assert(v);
+    assert(0 == uu_vec_len(v));
+  }
  * ```
  */
-#define uu_vec_clear(self)                                                                         \
+#define uu_vec_clear(self, ...)                                                                    \
   do {                                                                                             \
     extern void __uu_vec_clear(void*);                                                             \
                                                                                                    \
