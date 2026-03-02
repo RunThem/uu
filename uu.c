@@ -544,9 +544,10 @@ void __uu_dict_clear(void* _self) {
     bucket++;
 
     if (bucket == self->buckets + self->buckets_mask + 1) {
+      if (!self->obuckets) break;
       bucket = self->obuckets;
     }
-  } while (bucket != self->obuckets + self->obuckets_idx);
+  } while (bucket != (self->obuckets ? self->obuckets + self->obuckets_idx : NULL));
 
   if (self->obuckets) {
     UU_FREE(self->buckets);
@@ -706,9 +707,10 @@ int __uu_dict_each(void* _self, int init, void* out[2]) {
     self->iter_bucket++;
 
     if (self->iter_bucket == self->buckets + self->buckets_mask + 1) {
+      if (!self->obuckets) break;
       self->iter_bucket = self->obuckets;
     }
-  } while (self->iter_bucket != self->obuckets + self->obuckets_idx);
+  } while (self->iter_bucket != (self->obuckets ? self->obuckets + self->obuckets_idx : NULL));
 
   uu_end_if(!iter, err0);
 
