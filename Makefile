@@ -12,8 +12,14 @@ ifneq ($(MIMALLOC), )
 endif
 
 test: test_vec test_dict
-	$(CC) $(CFLAGS) -o test_vec uu.c test_vec.c && ./test_vec
-	$(CC) $(CFLAGS) -o test_dict uu.c test_dict.c && ./test_dict
+
+test_vec: uu.c test_vec.c
+	$(CC) $(CFLAGS) -DUU_DICT_CHECK -o $@ $^
+	@./test_vec
+
+test_dict: uu.c test_dict.c
+	$(CC) $(CFLAGS) -DUU_DICT_CHECK -o $@ $^
+	@./test_dict
 
 bench: uu.c bench.c
 	$(CC) $(CFLAGS) -o $@ $^ -lm
