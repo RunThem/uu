@@ -11,15 +11,15 @@ ifneq ($(MIMALLOC), )
 	CFLAGS += -D 'UU_FREE(ptr)=mi_free(ptr)'
 endif
 
-test: uu.c test.c
-	$(CC) $(CFLAGS) -DUU_DICT_CHECK -o $@ $^
-	@./test
+test: test_vec test_dict
+	$(CC) $(CFLAGS) -o test_vec uu.c test_vec.c && ./test_vec
+	$(CC) $(CFLAGS) -o test_dict uu.c test_dict.c && ./test_dict
 
 bench: uu.c bench.c
 	$(CC) $(CFLAGS) -o $@ $^ -lm
 	@./bench
 
 clean:
-	rm -rf test bench *.o *.dSYM
+	rm -rf test_vec test_dict bench *.o *.dSYM
 
 .PHONY: test bench clean
