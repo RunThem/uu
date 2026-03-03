@@ -343,7 +343,7 @@ static inline void mtree_del(mtree_mut_t T, mnode_mut_t n) {
   if (likely(T->len == 1)) T->root = NULL;
   else if (T->len == 2) {
     if (T->root != n) T->root->l = T->root->r = NULL; else {
-      T->root = (mnode_mut_t)((intptr_t)(n->l) | (intptr_t)(n->r));
+      T->root = (mnode_mut_t)((uintptr_t)(n->l) | (uintptr_t)(n->r));
       T->root->p = NULL;
     }
   } else {
@@ -460,9 +460,9 @@ static void __uu_dict_resize(uu_dict_mut_t self) {
 
   bzero(buckets, sizeof(mtree_t) * buckets_len);
 
+  self->obuckets_idx  = 0;
   self->obuckets      = self->buckets;
   self->obuckets_mask = self->buckets_mask;
-  self->obuckets_idx  = self->buckets_mask + 1;
   self->buckets       = buckets;
   self->buckets_mask  = buckets_len - 1;
 
@@ -480,20 +480,29 @@ static void __uu_dict_rehash(uu_dict_mut_t self) {
 
   uu_chk_if(likely(!self->obuckets));
 
-  while (self->obuckets_idx > 0 && !self->obuckets[--self->obuckets_idx].root) {
+  while (self->obuckets_idx <= self->obuckets_mask) {
+    obucket = &self->obuckets[self->obuckets_idx++];
+    if (!obucket->root) {
+      continue;
+    }
+
+    while ((node = mtree_tear(obucket, &next))) {
+      node->l = node->r = node->p = NULL;
+      node->h                     = 1;
+
+      bucket = &self->buckets[node->hash & self->buckets_mask];
+      mtree_add(bucket, node, self->cmp_fn);
+    }
+
+    break;
   }
 
-  for (obucket = &self->obuckets[self->obuckets_idx]; (node = mtree_tear(obucket, &next));) {
-    node->l = node->r = node->p = NULL;
-    node->h                     = 1;
+  if (self->obuckets_idx > self->obuckets_mask) {
+    UU_FREE(self->obuckets);
 
-    bucket = &self->buckets[node->hash & self->buckets_mask];
-    mtree_add(bucket, node, self->cmp_fn);
-  }
-
-  if (self->obuckets_idx == 0) {
     self->obuckets      = NULL;
     self->obuckets_mask = 0;
+    self->obuckets_idx  = 0;
   }
 }
 
@@ -531,32 +540,36 @@ err0:
 void __uu_dict_clear(void* _self) {
   uu_dict_mut_t self = (uu_dict_mut_t)_self;
   mtree_mut_t bucket = NULL;
+  mtree_mut_t begin  = NULL;
+  mtree_mut_t end    = NULL;
   mnode_mut_t node   = NULL;
   mnode_mut_t next   = NULL;
 
-  bucket = &self->buckets[0];
-
-  do {
+  begin = &self->buckets[0];
+  end   = &self->buckets[self->buckets_mask + 1];
+  for (bucket = begin; bucket != end; bucket++) {
     while ((node = mtree_tear(bucket, &next))) {
       UU_FREE(node);
     }
-
-    bucket++;
-
-    if (bucket == self->buckets + self->buckets_mask + 1) {
-      if (!self->obuckets) break;
-      bucket = self->obuckets;
-    }
-  } while (bucket != (self->obuckets ? self->obuckets + self->obuckets_idx : NULL));
-
-  if (self->obuckets) {
-    UU_FREE(self->buckets);
-    self->obuckets = NULL;
   }
 
-  self->len           = 0;
-  self->obuckets_idx  = 0;
-  self->obuckets_mask = 0;
+  if (self->obuckets) {
+    begin = &self->obuckets[self->obuckets_idx];
+    end   = &self->obuckets[self->obuckets_mask + 1];
+    for (bucket = begin; bucket != end; bucket++) {
+      while ((node = mtree_tear(bucket, &next))) {
+        UU_FREE(node);
+      }
+    }
+
+    UU_FREE(self->obuckets);
+
+    self->obuckets      = NULL;
+    self->obuckets_idx  = 0;
+    self->obuckets_mask = 0;
+  }
+
+  self->len = 0;
 }
 
 void __uu_dict_deinit(void* _self) {
@@ -588,7 +601,7 @@ void* __uu_dict_at(void* _self, void* key) {
   bucket = &self->buckets[hash & self->buckets_mask];
   node   = mtree_at(bucket, hash, key, self->cmp_fn);
 
-  if (!node && ((hash & self->obuckets_mask) < self->obuckets_idx)) {
+  if (unlikely(!node && self->obuckets) && ((hash & self->obuckets_mask) >= self->obuckets_idx)) {
     bucket = &self->obuckets[hash & self->obuckets_mask];
     node   = mtree_at(bucket, hash, key, self->cmp_fn);
   }
@@ -612,7 +625,7 @@ int __uu_dict_insert(void* _self, void* key, void* uptr) {
 
   hash = MurmurHash3_32(key, self->ksize, self->seed);
 
-  if (unlikely(self->obuckets) && (hash & self->obuckets_mask) < self->obuckets_idx) {
+  if (unlikely(self->obuckets) && (hash & self->obuckets_mask) >= self->obuckets_idx) {
     bucket = &self->obuckets[hash & self->obuckets_mask];
     node   = mtree_at(bucket, hash, key, self->cmp_fn);
   }
@@ -659,7 +672,7 @@ void* __uu_dict_remove(void* _self, void* key) {
   bucket = &self->buckets[hash & self->buckets_mask];
   node   = mtree_at(bucket, hash, key, self->cmp_fn);
 
-  if (!node && self->obuckets && ((hash & self->obuckets_mask) < self->obuckets_idx)) {
+  if (unlikely(!node && self->obuckets) && ((hash & self->obuckets_mask) >= self->obuckets_idx)) {
     bucket = &self->obuckets[hash & self->obuckets_mask];
     node   = mtree_at(bucket, hash, key, self->cmp_fn);
   }
@@ -707,7 +720,9 @@ int __uu_dict_each(void* _self, int init, void* out[2]) {
     self->iter_bucket++;
 
     if (self->iter_bucket == self->buckets + self->buckets_mask + 1) {
-      if (!self->obuckets) break;
+      if (!self->obuckets) {
+        break;
+      }
       self->iter_bucket = self->obuckets;
     }
   } while (self->iter_bucket != (self->obuckets ? self->obuckets + self->obuckets_idx : NULL));
