@@ -1,28 +1,28 @@
 CFLAGS = -Wall -Wextra -Werror -std=gnu99 -O3 -ggdb
 
-MIMALLOC = 
+LIBS_MIMALLOC_PATH =
 
-ifneq ($(MIMALLOC), )
-	CFLAGS += -include $(MIMALLOC)/include/mimalloc.h
-	CFLAGS += -L $(MIMALLOC)/lib -lmimalloc
-	CFLAGS += -DUU_MEMORY
-	CFLAGS += -D 'UU_MALLOC(size)=mi_malloc(size)'
-	CFLAGS += -D 'UU_REALLOC(ptr, size)=mi_realloc(ptr, size)'
-	CFLAGS += -D 'UU_FREE(ptr)=mi_free(ptr)'
+ifneq ($(LIBS_MIMALLOC_PATH), )
+	LIBS_MIMALLOC_CFLAGS += -include $(LIBS_MIMALLOC_PATH)/include/mimalloc.h
+	LIBS_MIMALLOC_CFLAGS += -L $(LIBS_MIMALLOC_PATH)/lib -lmimalloc
+	LIBS_MIMALLOC_CFLAGS += -DUU_MEMORY
+	LIBS_MIMALLOC_CFLAGS += -D 'UU_MALLOC(size)=mi_malloc(size)'
+	LIBS_MIMALLOC_CFLAGS += -D 'UU_REALLOC(ptr, size)=mi_realloc(ptr, size)'
+	LIBS_MIMALLOC_CFLAGS += -D 'UU_FREE(ptr)=mi_free(ptr)'
 endif
 
 test: test_vec test_dict
 
 test_vec: uu.c test_vec.c
-	$(CC) $(CFLAGS) -DUU_DICT_CHECK -o $@ $^
+	$(CC) $(CFLAGS) -DUU_DICT_CHECK -o $@ $^ $(LIBS_MIMALLOC_CFLAGS)
 	@./test_vec
 
 test_dict: uu.c test_dict.c
-	$(CC) $(CFLAGS) -DUU_DICT_CHECK -o $@ $^
+	$(CC) $(CFLAGS) -DUU_DICT_CHECK -o $@ $^ $(LIBS_MIMALLOC_CFLAGS)
 	@./test_dict
 
 bench: uu.c bench.c
-	$(CC) $(CFLAGS) -o $@ $^ -lm
+	$(CC) $(CFLAGS) -o $@ $^ -lm $(LIBS_MIMALLOC_CFLAGS)
 	@./bench
 
 clean:

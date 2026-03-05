@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+/***************************************************************************************************
+ * Macro
+ **************************************************************************************************/
 #define UU_DICT_NBL_STACK_MAX 64
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -15,22 +18,37 @@
 #  define unlikely(x) (x)
 #endif
 
-/***************************************************************************************************
- * Macro
- **************************************************************************************************/
 #define uu_chk_if(expr, ...)                                                                       \
-  if (expr) {                                                                                      \
+  if (unlikely(expr)) {                                                                            \
     return __VA_ARGS__;                                                                            \
   }                                                                                                \
   do {                                                                                             \
   } while (0)
 
 #define uu_end_if(expr, ...)                                                                       \
-  if (expr) {                                                                                      \
+  if (unlikely(expr)) {                                                                            \
     goto __VA_ARGS__;                                                                              \
   }                                                                                                \
   do {                                                                                             \
   } while (0)
+
+/***************************************************************************************************
+ * Hash function
+ **************************************************************************************************/
+#define UU_DICT_HASH_FUNCTION Fnv1a_32
+static inline uint32_t Fnv1a_32(const void* data, int len, uint32_t send) {
+  uint32_t h1           = 0x811c9dc5;
+  const uint8_t* blocks = (const uint8_t*)data;
+
+  (void)send;
+
+  while (--len >= 0) {
+    h1 ^= (uint32_t)blocks[len];
+    h1 *= 0x01000193;
+  }
+
+  return h1;
+}
 
 /***************************************************************************************************
  * Vec
@@ -390,60 +408,6 @@ typedef struct uu_dict_t {
   mnode_mut_t iter_node;
 } uu_dict_t;
 
-static inline uint32_t MurmurHash3_32(const void* data, int len, uint32_t seed) {
-  const int nblocks      = len / 4;
-  uint32_t h1            = seed;
-  uint32_t k1            = 0;
-  uint32_t c1            = 0xcc9e2d51;
-  uint32_t c2            = 0x1b873593;
-  const uint32_t* blocks = (const uint32_t*)((const uint8_t*)data + nblocks * 4);
-  const uint8_t* tail    = (const uint8_t*)((const uint8_t*)data + nblocks * 4);
-  int i                  = 0;
-
-  //----------
-  // body
-
-  for (i = -nblocks; i; i++) {
-    k1 = blocks[i];
-    k1 *= c1;
-    k1 = (k1 << 15) | (k1 >> 17);
-    k1 *= c2;
-
-    h1 ^= k1;
-    h1 = (h1 << 13) | (h1 >> 19);
-    h1 = h1 * 5 + 0xe6546b64;
-  }
-
-  //----------
-  // tail
-
-  k1 = 0;
-  switch (len & 3) {
-    case 3: k1 ^= tail[2] << 16; /* fallthrough */
-    case 2: k1 ^= tail[1] << 8;  /* fallthrough */
-    case 1:
-      k1 ^= tail[0];
-      k1 *= c1;
-      k1 = (k1 << 15) | (k1 >> 17);
-      k1 *= c2;
-      h1 ^= k1;
-
-    default: break;
-  };
-
-  //----------
-  // finalization
-
-  h1 ^= len;
-  h1 ^= h1 >> 16;
-  h1 *= 0x85ebca6b;
-  h1 ^= h1 >> 13;
-  h1 *= 0xc2b2ae35;
-  h1 ^= h1 >> 16;
-
-  return h1;
-}
-
 static void __uu_dict_resize(uu_dict_mut_t self) {
   mtree_mut_t buckets  = NULL;
   uint32_t buckets_len = self->buckets_mask + 1;
@@ -597,7 +561,7 @@ void* __uu_dict_at(void* _self, void* key) {
 
   __uu_dict_rehash(self);
 
-  hash   = MurmurHash3_32(key, self->ksize, self->seed);
+  hash   = UU_DICT_HASH_FUNCTION(key, self->ksize, self->seed);
   bucket = &self->buckets[hash & self->buckets_mask];
   node   = mtree_at(bucket, hash, key, self->cmp_fn);
 
@@ -606,7 +570,7 @@ void* __uu_dict_at(void* _self, void* key) {
     node   = mtree_at(bucket, hash, key, self->cmp_fn);
   }
 
-  uu_end_if(unlikely(!node), err0);
+  uu_end_if(!node, err0);
 
   return (void*)node->uptr;
 
@@ -623,17 +587,17 @@ int __uu_dict_insert(void* _self, void* key, void* uptr) {
 
   __uu_dict_rehash(self);
 
-  hash = MurmurHash3_32(key, self->ksize, self->seed);
+  hash = UU_DICT_HASH_FUNCTION(key, self->ksize, self->seed);
 
   if (unlikely(self->obuckets) && (hash & self->obuckets_mask) >= self->obuckets_idx) {
     bucket = &self->obuckets[hash & self->obuckets_mask];
     node   = mtree_at(bucket, hash, key, self->cmp_fn);
   }
 
-  uu_end_if(unlikely(node), err0);
+  uu_end_if(node, err0);
 
   node = (mnode_mut_t)UU_MALLOC(sizeof(mnode_t) + self->ksize);
-  uu_end_if(unlikely(!node), err0);
+  uu_end_if(!node, err0);
 
   node->l = node->r = node->p = NULL;
   node->h                     = 1;
@@ -644,7 +608,7 @@ int __uu_dict_insert(void* _self, void* key, void* uptr) {
 
   bucket = &self->buckets[hash & self->buckets_mask];
   result = mtree_add(bucket, node, self->cmp_fn);
-  uu_end_if(unlikely(!result), err0);
+  uu_end_if(!result, err0);
 
   self->len++;
 
@@ -667,7 +631,7 @@ void* __uu_dict_remove(void* _self, void* key) {
 
   __uu_dict_rehash(self);
 
-  hash = MurmurHash3_32(key, self->ksize, self->seed);
+  hash = UU_DICT_HASH_FUNCTION(key, self->ksize, self->seed);
 
   bucket = &self->buckets[hash & self->buckets_mask];
   node   = mtree_at(bucket, hash, key, self->cmp_fn);
@@ -699,7 +663,7 @@ int __uu_dict_each(void* _self, int init, void* out[2]) {
 
   uu_chk_if(self->len == 0, !!0);
 
-  if (init) {
+  if (unlikely(init)) {
     self->iter_node   = NULL;
     self->iter_bucket = self->buckets;
     return !!0;
