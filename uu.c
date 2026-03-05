@@ -413,7 +413,7 @@ static void __uu_dict_resize(uu_dict_mut_t self) {
   uint32_t buckets_len = self->buckets_mask + 1;
   uint32_t limit       = self->len * 6 >> 2;
 
-  uu_chk_if(likely(limit <= buckets_len));
+  uu_chk_if(likely(limit <= buckets_len || self->obuckets));
 
   while (buckets_len < limit) {
     buckets_len <<= 1;
