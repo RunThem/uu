@@ -106,4 +106,35 @@ UBENCH_EX(Dict, remove) {
   uu_dict_deinit(d);
 }
 
+UBENCH_EX(Dict, each) {
+  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+
+  size_t i   = 0;
+  int* array = make_array(COUNT);
+
+  for (i = 0; i < COUNT; i++) {
+    uu_dict_insert(d, array[i], (void*)(intptr_t)array[i]);
+  }
+
+  UBENCH_DO_BENCHMARK() {
+    i = 0;
+
+    UBENCH_DO_BENCHMARK_BLOCK({
+      uu_dict_each(d, key, int*, val) {
+        (void)key;
+        (void)val;
+        i++;
+      };
+    });
+
+    assert(i == COUNT);
+  }
+
+  UBENCH_DO_NOTHING(&i);
+
+  free(array);
+
+  uu_dict_deinit(d);
+}
+
 UBENCH_MAIN();
