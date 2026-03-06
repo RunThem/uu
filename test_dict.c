@@ -9,6 +9,9 @@
 
 uu_cmp_fn_def(int, x, y, x - y);
 
+// 全局不可变变量：测试数据量
+#define TEST_DICT_NUM_ITEMS 20000
+
 void test_dict_init() {
   printf("test(uu_dict_init): ");
 
@@ -30,9 +33,11 @@ void test_dict_clear() {
 
   uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
 
-  uu_dict_insert(d, 1, (void*)0x11);
-  uu_dict_insert(d, 2, (void*)0x22);
-  assert(2 == uu_dict_len(d));
+  for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
+    int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
+    assert(result);
+  }
+  assert(TEST_DICT_NUM_ITEMS == uu_dict_len(d));
 
   uu_dict_clear(d);
   assert(0 == uu_dict_len(d));
@@ -66,14 +71,11 @@ void test_dict_len() {
 
   assert(0 == uu_dict_len(d));
 
-  uu_dict_insert(d, 1, (void*)0x11);
-  assert(1 == uu_dict_len(d));
-
-  uu_dict_insert(d, 2, (void*)0x22);
-  assert(2 == uu_dict_len(d));
-
-  uu_dict_insert(d, 3, (void*)0x33);
-  assert(3 == uu_dict_len(d));
+  for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
+    int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
+    assert(result);
+  }
+  assert(TEST_DICT_NUM_ITEMS == uu_dict_len(d));
 
   uu_dict_deinit(d);
   assert(!d);
@@ -88,11 +90,11 @@ void test_dict_is_empty() {
 
   assert(uu_dict_is_empty(d));
 
-  uu_dict_insert(d, 1, (void*)0x11);
-  assert(!uu_dict_is_empty(d));
-
-  uu_dict_insert(d, 2, (void*)0x22);
-  assert(!uu_dict_is_empty(d));
+  for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
+    int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
+    assert(result);
+    assert(!uu_dict_is_empty(d));
+  }
 
   uu_dict_clear(d);
   assert(uu_dict_is_empty(d));
@@ -108,17 +110,14 @@ void test_dict_at() {
 
   uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
 
-  uu_dict_insert(d, 1, (void*)0x11);
-  uu_dict_insert(d, 2, (void*)0x22);
-  uu_dict_insert(d, 3, (void*)0x33);
-  uu_dict_insert(d, 4, (void*)0x44);
-  uu_dict_insert(d, 5, (void*)0x55);
+  for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
+    int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
+    assert(result);
+  }
 
-  assert((void*)0x11 == uu_dict_at(d, 1));
-  assert((void*)0x22 == uu_dict_at(d, 2));
-  assert((void*)0x33 == uu_dict_at(d, 3));
-  assert((void*)0x44 == uu_dict_at(d, 4));
-  assert((void*)0x55 == uu_dict_at(d, 5));
+  for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
+    assert((void*)(uintptr_t)(i + 1) == uu_dict_at(d, i));
+  }
 
   uu_dict_deinit(d);
   assert(!d);
@@ -131,25 +130,21 @@ void test_dict_insert() {
 
   uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
 
-  int result = uu_dict_insert(d, 1, (void*)0x11);
-  assert(result);
-  assert(1 == uu_dict_len(d));
+  for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
+    int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
+    assert(result);
+  }
+  assert(TEST_DICT_NUM_ITEMS == uu_dict_len(d));
 
-  result = uu_dict_insert(d, 2, (void*)0x22);
-  assert(result);
-  assert(2 == uu_dict_len(d));
-
-  result = uu_dict_insert(d, 3, (void*)0x33);
-  assert(result);
-  assert(3 == uu_dict_len(d));
-
-  result = uu_dict_insert(d, 1, (void*)0x11);
+  // 尝试插入重复键
+  int result = uu_dict_insert(d, 0, (void*)0xDEADBEEF);
   assert(!result);
-  assert(3 == uu_dict_len(d));
+  assert(TEST_DICT_NUM_ITEMS == uu_dict_len(d));
 
-  assert((void*)0x11 == uu_dict_at(d, 1));
-  assert((void*)0x22 == uu_dict_at(d, 2));
-  assert((void*)0x33 == uu_dict_at(d, 3));
+  // 验证数据
+  for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
+    assert((void*)(uintptr_t)(i + 1) == uu_dict_at(d, i));
+  }
 
   uu_dict_deinit(d);
   assert(!d);
@@ -162,26 +157,30 @@ void test_dict_remove() {
 
   uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
 
-  uu_dict_insert(d, 1, (void*)0x11);
-  uu_dict_insert(d, 2, (void*)0x22);
-  uu_dict_insert(d, 3, (void*)0x33);
-  uu_dict_insert(d, 4, (void*)0x44);
-  uu_dict_insert(d, 5, (void*)0x55);
-  assert(5 == uu_dict_len(d));
+  for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
+    int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
+    assert(result);
+  }
+  assert(TEST_DICT_NUM_ITEMS == uu_dict_len(d));
 
-  void* result = uu_dict_remove(d, 3);
-  assert((void*)0x33 == result);
-  assert(4 == uu_dict_len(d));
+  // 删除中间的一个元素
+  void* result = uu_dict_remove(d, TEST_DICT_NUM_ITEMS / 2);
+  assert((void*)(uintptr_t)(TEST_DICT_NUM_ITEMS / 2 + 1) == result);
+  assert(TEST_DICT_NUM_ITEMS - 1 == uu_dict_len(d));
 
-  result = uu_dict_remove(d, 3);
+  // 再次删除同一键应该返回 NULL
+  result = uu_dict_remove(d, TEST_DICT_NUM_ITEMS / 2);
   assert(!result);
-  assert(4 == uu_dict_len(d));
+  assert(TEST_DICT_NUM_ITEMS - 1 == uu_dict_len(d));
 
-  assert((void*)0x11 == uu_dict_at(d, 1));
-  assert((void*)0x22 == uu_dict_at(d, 2));
-  assert((void*)0x44 == uu_dict_at(d, 4));
-  assert((void*)0x55 == uu_dict_at(d, 5));
-  assert(!uu_dict_at(d, 3));
+  // 验证删除后的数据
+  for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
+    if (i == TEST_DICT_NUM_ITEMS / 2) {
+      assert(NULL == uu_dict_at(d, i));
+    } else {
+      assert((void*)(uintptr_t)(i + 1) == uu_dict_at(d, i));
+    }
+  }
 
   uu_dict_deinit(d);
   assert(!d);
@@ -194,19 +193,18 @@ void test_dict_each() {
 
   uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
 
-  uu_dict_insert(d, 1, (void*)1);
-  uu_dict_insert(d, 2, (void*)2);
-  uu_dict_insert(d, 3, (void*)3);
-  uu_dict_insert(d, 4, (void*)4);
-  uu_dict_insert(d, 5, (void*)5);
+  for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
+    int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
+    assert(result);
+  }
 
   int cnt = 0;
   uu_dict_each(d, key, int*, uptr) {
-    assert(key == (int)(uintptr_t)uptr);
+    assert((void*)(uintptr_t)(key + 1) == uptr);
     cnt++;
   }
 
-  assert(5 == cnt);
+  assert(TEST_DICT_NUM_ITEMS == cnt);
 
   uu_dict_deinit(d);
   assert(!d);
@@ -219,20 +217,19 @@ void test_dict_each_if() {
 
   uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
 
-  uu_dict_insert(d, 1, (void*)0x11);
-  uu_dict_insert(d, 2, (void*)0x22);
-  uu_dict_insert(d, 3, (void*)0x33);
-  uu_dict_insert(d, 4, (void*)0x44);
-  uu_dict_insert(d, 5, (void*)0x55);
+  for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
+    int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
+    assert(result);
+  }
 
   int cnt = 0;
-  uu_dict_each_if(d, key, int*, uptr, key % 2 == 1) {
+  uu_dict_each_if(d, key, int*, uptr, key % 2 == 0) {
     (void)uptr;
-    assert(key % 2 == 1);
+    assert(key % 2 == 0);
     cnt++;
   }
 
-  assert(3 == cnt);
+  assert(TEST_DICT_NUM_ITEMS / 2 == cnt);
 
   uu_dict_deinit(d);
   assert(!d);
@@ -245,16 +242,15 @@ void test_dict_find_if() {
 
   uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
 
-  uu_dict_insert(d, 1, (void*)0x11);
-  uu_dict_insert(d, 2, (void*)0x22);
-  uu_dict_insert(d, 3, (void*)0x33);
-  uu_dict_insert(d, 4, (void*)0x44);
-  uu_dict_insert(d, 5, (void*)0x55);
+  for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
+    int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
+    assert(result);
+  }
 
-  int* found = uu_dict_find_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)0x33);
-  assert(found && (int)(uintptr_t)found == 0x33);
+  int* found = uu_dict_find_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)(TEST_DICT_NUM_ITEMS / 2 + 1));
+  assert(found && (int)(uintptr_t)found == TEST_DICT_NUM_ITEMS / 2 + 1);
 
-  found = uu_dict_find_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)0x66);
+  found = uu_dict_find_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)(TEST_DICT_NUM_ITEMS + 100));
   assert(!found);
 
   uu_dict_deinit(d);
@@ -268,16 +264,15 @@ void test_dict_any_if() {
 
   uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
 
-  uu_dict_insert(d, 1, (void*)0x11);
-  uu_dict_insert(d, 2, (void*)0x22);
-  uu_dict_insert(d, 3, (void*)0x33);
-  uu_dict_insert(d, 4, (void*)0x44);
-  uu_dict_insert(d, 5, (void*)0x55);
+  for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
+    int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
+    assert(result);
+  }
 
-  int result = uu_dict_any_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)0x33);
+  int result = uu_dict_any_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)(TEST_DICT_NUM_ITEMS / 2 + 1));
   assert(result);
 
-  result = uu_dict_any_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)0x66);
+  result = uu_dict_any_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)(TEST_DICT_NUM_ITEMS + 100));
   assert(!result);
 
   uu_dict_deinit(d);
@@ -291,16 +286,15 @@ void test_dict_all_if() {
 
   uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
 
-  uu_dict_insert(d, 1, (void*)0x11);
-  uu_dict_insert(d, 2, (void*)0x22);
-  uu_dict_insert(d, 3, (void*)0x33);
-  uu_dict_insert(d, 4, (void*)0x44);
-  uu_dict_insert(d, 5, (void*)0x55);
+  for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
+    int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
+    assert(result);
+  }
 
-  int result = uu_dict_all_if(d, key, int*, uptr, uptr >= (int*)(uintptr_t)0x11);
+  int result = uu_dict_all_if(d, key, int*, uptr, uptr >= (int*)(uintptr_t)1);
   assert(result);
 
-  result = uu_dict_all_if(d, key, int*, uptr, uptr > (int*)(uintptr_t)0x11);
+  result = uu_dict_all_if(d, key, int*, uptr, uptr > (int*)(uintptr_t)1);
   assert(!result);
 
   uu_dict_deinit(d);
