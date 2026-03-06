@@ -109,28 +109,33 @@ UBENCH_EX(Dict, remove) {
 UBENCH_EX(Dict, each) {
   uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
 
-  size_t i   = 0;
-  int* array = make_array(COUNT);
+  size_t i      = 0;
+  size_t knum   = 0;
+  size_t vnum   = 0;
+  size_t result = (COUNT - 1) * COUNT / 2;
+  int* array    = make_array(COUNT);
 
   for (i = 0; i < COUNT; i++) {
     uu_dict_insert(d, array[i], (void*)(intptr_t)array[i]);
   }
 
   UBENCH_DO_BENCHMARK() {
-    i = 0;
+    knum = 0;
+    vnum = 0;
 
     UBENCH_DO_BENCHMARK_BLOCK({
       uu_dict_each(d, key, int*, val) {
-        (void)key;
-        (void)val;
-        i++;
+        knum += key;
+        vnum += (size_t)(uintptr_t)val;
       };
     });
 
-    assert(i == COUNT);
+    assert(knum == result);
+    assert(vnum == result);
   }
 
-  UBENCH_DO_NOTHING(&i);
+  UBENCH_DO_NOTHING(&knum);
+  UBENCH_DO_NOTHING(&vnum);
 
   free(array);
 
