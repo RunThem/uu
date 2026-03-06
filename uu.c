@@ -669,6 +669,11 @@ int __uu_dict_each(void* _self, int init, void* out[2]) {
   if (unlikely(init)) {
     self->iter_node   = NULL;
     self->iter_bucket = self->buckets;
+
+    while (self->obuckets) {
+      __uu_dict_rehash(self);
+    }
+
     return !!0;
   }
 
