@@ -677,8 +677,8 @@ int __uu_dict_each(void* _self, int init, void* out[2]) {
     return !!0;
   }
 
-  iter = self->iter_node;
-  do {
+  for (iter = self->iter_node; self->iter_bucket != self->buckets + self->buckets_mask + 1;
+       self->iter_bucket++) {
     if (!iter) {
       iter = mtree_first(self->iter_bucket);
     } else {
@@ -688,17 +688,7 @@ int __uu_dict_each(void* _self, int init, void* out[2]) {
     if (iter) {
       break;
     }
-
-    self->iter_bucket++;
-
-    if (self->iter_bucket == self->buckets + self->buckets_mask + 1) {
-      if (!self->obuckets) {
-        break;
-      }
-
-      self->iter_bucket = self->obuckets;
-    }
-  } while (self->iter_bucket != self->obuckets + self->obuckets_idx);
+  }
 
   uu_end_if(!iter, err0);
 
