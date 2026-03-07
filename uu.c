@@ -19,14 +19,14 @@
 #endif
 
 #define uu_chk_if(expr, ...)                                                                       \
-  if (unlikely(expr)) {                                                                            \
+  if (expr) {                                                                                      \
     return __VA_ARGS__;                                                                            \
   }                                                                                                \
   do {                                                                                             \
   } while (0)
 
 #define uu_end_if(expr, ...)                                                                       \
-  if (unlikely(expr)) {                                                                            \
+  if (expr) {                                                                                      \
     goto __VA_ARGS__;                                                                              \
   }                                                                                                \
   do {                                                                                             \
@@ -600,7 +600,7 @@ int __uu_dict_insert(void* _self, void* key, void* uptr) {
   uu_end_if(node, err0);
 
   node = (mnode_mut_t)UU_MALLOC(sizeof(mnode_t) + self->ksize);
-  uu_end_if(!node, err0);
+  uu_end_if(unlikely(!node), err0);
 
   node->l = node->r = node->p = NULL;
   node->h                     = 1;
