@@ -7,8 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-uu_cmp_fn_def(int, x, y, x - y);
-
 // 全局不可变变量：测试数据量
 #define TEST_DICT_NUM_ITEMS 20000
 
@@ -16,7 +14,7 @@ void test_dict_init() {
   printf("test(uu_dict_init): ");
 
   uu_dict(int, int*) d = NULL;
-  d                    = uu_dict_init(d, cmp_fn_int);
+  d                    = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   assert(d);
   assert(uu_dict_is_empty(d));
@@ -31,7 +29,7 @@ void test_dict_init() {
 void test_dict_clear() {
   printf("test(uu_dict_clear): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
     int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
@@ -52,7 +50,7 @@ void test_dict_clear() {
 void test_dict_deinit() {
   printf("test(uu_dict_deinit): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   uu_dict_insert(d, 1, (void*)0x11);
   uu_dict_insert(d, 2, (void*)0x22);
@@ -67,7 +65,7 @@ void test_dict_deinit() {
 void test_dict_len() {
   printf("test(uu_dict_len): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   assert(0 == uu_dict_len(d));
 
@@ -86,7 +84,7 @@ void test_dict_len() {
 void test_dict_is_empty() {
   printf("test(uu_dict_is_empty): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   assert(uu_dict_is_empty(d));
 
@@ -108,7 +106,7 @@ void test_dict_is_empty() {
 void test_dict_at() {
   printf("test(uu_dict_at): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
     int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
@@ -128,7 +126,7 @@ void test_dict_at() {
 void test_dict_insert() {
   printf("test(uu_dict_insert): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
     int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
@@ -155,7 +153,7 @@ void test_dict_insert() {
 void test_dict_remove() {
   printf("test(uu_dict_remove): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
     int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
@@ -191,7 +189,7 @@ void test_dict_remove() {
 void test_dict_each() {
   printf("test(uu_dict_each): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
     int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
@@ -215,7 +213,7 @@ void test_dict_each() {
 void test_dict_each_if() {
   printf("test(uu_dict_each_if): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
     int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
@@ -240,14 +238,15 @@ void test_dict_each_if() {
 void test_dict_find_if() {
   printf("test(uu_dict_find_if): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
     int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
     assert(result);
   }
 
-  int* found = uu_dict_find_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)(TEST_DICT_NUM_ITEMS / 2 + 1));
+  int* found =
+      uu_dict_find_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)(TEST_DICT_NUM_ITEMS / 2 + 1));
   assert(found && (int)(uintptr_t)found == TEST_DICT_NUM_ITEMS / 2 + 1);
 
   found = uu_dict_find_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)(TEST_DICT_NUM_ITEMS + 100));
@@ -262,14 +261,15 @@ void test_dict_find_if() {
 void test_dict_any_if() {
   printf("test(uu_dict_any_if): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
     int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
     assert(result);
   }
 
-  int result = uu_dict_any_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)(TEST_DICT_NUM_ITEMS / 2 + 1));
+  int result =
+      uu_dict_any_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)(TEST_DICT_NUM_ITEMS / 2 + 1));
   assert(result);
 
   result = uu_dict_any_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)(TEST_DICT_NUM_ITEMS + 100));
@@ -284,7 +284,7 @@ void test_dict_any_if() {
 void test_dict_all_if() {
   printf("test(uu_dict_all_if): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   for (int i = 0; i < TEST_DICT_NUM_ITEMS; i++) {
     int result = uu_dict_insert(d, i, (void*)(uintptr_t)(i + 1));
@@ -307,7 +307,7 @@ void test_dict_all_if() {
 void test_dict_access_nonexistent_key() {
   printf("test(dict_access_nonexistent_key): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   // 尝试访问不存在的键应该返回NULL
   assert(NULL == uu_dict_at(d, 1));
@@ -328,7 +328,7 @@ void test_dict_access_nonexistent_key() {
 void test_dict_large_data_operations() {
   printf("test(dict_large_data_operations): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   // 插入大量数据 - 使用较小的数量以避免性能问题
   const int num_items = 1000;
@@ -380,7 +380,7 @@ void test_dict_large_data_operations() {
 void test_dict_duplicate_keys() {
   printf("test(dict_duplicate_keys): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   // 插入相同的键多次
   int result = uu_dict_insert(d, 1, (void*)0x11);
@@ -425,7 +425,7 @@ void test_dict_duplicate_keys() {
 void test_dict_extreme_values() {
   printf("test(dict_extreme_values): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   // 使用极值作为键进行测试
   int min_int = INT_MIN;
@@ -469,7 +469,7 @@ void test_dict_extreme_values() {
 void test_dict_zero_key() {
   printf("test(dict_zero_key): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   // 测试零作为键
   int result = uu_dict_insert(d, 0, (void*)0x00);
@@ -500,7 +500,7 @@ void test_dict_zero_key() {
 void test_dict_negative_keys() {
   printf("test(dict_negative_keys): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   // 测试负数键
   int result = uu_dict_insert(d, -1, (void*)0x11);
@@ -541,7 +541,7 @@ void test_dict_negative_keys() {
 void test_dict_edge_case_operations() {
   printf("test(dict_edge_case_operations): ");
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   // 测试在空字典中删除
   void* result = uu_dict_remove(d, 1);
@@ -581,7 +581,7 @@ void test_dict_memory_operations() {
 
   // 多次初始化和销毁，测试内存管理
   for (int i = 0; i < 3; i++) {  // 减少循环次数进一步
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+    uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
     // 插入少量数据
     for (int j = 0; j < 10; j++) {
@@ -608,7 +608,7 @@ void test_dict_error_usage() {
   // 注意：根据uu.h中的实现，宏会检查指针是否为NULL，所以不会出现段错误
   // 但我们仍可以测试一些逻辑边界情况
 
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   // 在空字典中查找不存在的键应该返回NULL而不是崩溃
   assert(NULL == uu_dict_at(d, 123));

@@ -7,25 +7,53 @@ extern "C" {
 
 #include <assert.h>
 #include <stdint.h>
+#include <string.h>
 
-#define uu_cmp_fn_def(type, x, y, ...)                                                             \
-  int cmp_fn_##type(const void* _##x, const void* _##y) {                                          \
-    type x = *(type*)_##x, y = *(type*)_##y;                                                       \
-                                                                                                   \
-    return __VA_ARGS__;                                                                            \
-  }
-
-typedef int (*uu_cmp_fn)(const void* x, const void* y);
-
-/***************************************************************************************************
- * Memory allocator
- **************************************************************************************************/
 #ifndef UU_MEMORY
 #  include <stdlib.h>
 #  define UU_MALLOC(size)       malloc(size)
 #  define UU_REALLOC(ptr, size) realloc(ptr, size)
 #  define UU_FREE(ptr)          free(ptr)
 #endif
+
+/* clang-format off */
+typedef int      (*uu_cmp_fn)  (const void* x, const void* y);
+typedef uint32_t (*uu_hash_fn) (const void* data, uint32_t len, uint32_t seed);
+
+extern uint32_t uu_hash_fn_fnv1a(const void*, uint32_t, uint32_t);
+
+#define uu_cmp_fn_def(name, type, x, y, ...)                                                       \
+  static inline int uu_cmp_fn_##name(const void* _##x, const void* _##y) {                         \
+    type x = *(type*)_##x;                                                                         \
+    type y = *(type*)_##y;                                                                         \
+                                                                                                   \
+    return __VA_ARGS__;                                                                            \
+  }
+
+#define uu_hash_fn_def(name, type, data, ...)                                                      \
+  static inline uint32_t uu_hash_fn_##name(const void* _##data, uint32_t len, uint32_t seed) {     \
+    type data = *(type*)_##data;                                                                   \
+                                                                                                   \
+    (void)len;                                                                                     \
+    (void)seed;                                                                                    \
+                                                                                                   \
+    return __VA_ARGS__;                                                                            \
+  }
+
+uu_cmp_fn_def(char,   char,     x, y, x - y);
+uu_cmp_fn_def(int,    int,      x, y, x - y);
+uu_cmp_fn_def(int8,   int8_t,   x, y, x - y);
+uu_cmp_fn_def(uint8,  uint8_t,  x, y, x - y);
+uu_cmp_fn_def(int16,  int16_t,  x, y, x - y);
+uu_cmp_fn_def(uint16, uint16_t, x, y, x - y);
+uu_cmp_fn_def(int32,  int32_t,  x, y, x - y);
+uu_cmp_fn_def(uint32, uint32_t, x, y, x - y);
+uu_cmp_fn_def(int64,  int64_t,  x, y, x - y);
+uu_cmp_fn_def(uint64, uint64_t, x, y, x - y);
+
+uu_cmp_fn_def(cstr,  char*, x, y, strcmp(x, y));
+uu_hash_fn_def(cstr, char*, data, uu_hash_fn_fnv1a(data, strlen(data), 0));
+/* clang-format on */
 
 /***************************************************************************************************
  * Vec
@@ -735,20 +763,24 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
  *
  * ```c
   {
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+    uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
     assert(d);
   }
   {
     uu_dict(int, int*) d = NULL;
 
-    d = uu_dict_init(d, cmp_fn_int);
+    d = uu_dict_init(d, uu_cmp_fn_int, NULL);
+    assert(d);
+  }
+  {
+    uu_dict(char*, int*) d = uu_dict_init(d, uu_cmp_fn_cstr, uu_hash_fn_cstr);
     assert(d);
   }
  * ```
  */
-#define uu_dict_init(self, cmp_fn)                                                                 \
+#define uu_dict_init(self, cmp_fn, hash_fn)                                                        \
   ({                                                                                               \
-    extern void* __uu_dict_init(uint32_t, uu_cmp_fn);                                              \
+    extern void* __uu_dict_init(uint32_t, uu_cmp_fn, uu_hash_fn);                                  \
                                                                                                    \
     {                                                                                              \
       uu_cmp_fn CmpFn = cmp_fn;                                                                    \
@@ -756,7 +788,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
       assert(CmpFn != nil);                                                                        \
     }                                                                                              \
                                                                                                    \
-    self = (__typeof__(self))__uu_dict_init(sizeof(*self), cmp_fn);                                \
+    self = (__typeof__(self))__uu_dict_init(sizeof(*self), cmp_fn, hash_fn);                       \
                                                                                                    \
     self;                                                                                          \
   })

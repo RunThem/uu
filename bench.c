@@ -1,8 +1,6 @@
 #include "ubench.h"
 #include "uu.h"
 
-uu_cmp_fn_def(int, x, y, x - y);
-
 void shuffle(int* array, int len) {
   srand(time(NULL));
 
@@ -28,7 +26,7 @@ int* make_array(int n) {
 }
 
 UBENCH_EX(Dict, at) {
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   size_t i   = 0;
   int* array = make_array(COUNT);
@@ -55,7 +53,7 @@ UBENCH_EX(Dict, at) {
 }
 
 UBENCH_EX(Dict, insert) {
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   size_t i   = 0;
   int* array = make_array(COUNT);
@@ -80,7 +78,7 @@ UBENCH_EX(Dict, insert) {
 }
 
 UBENCH_EX(Dict, remove) {
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   size_t i   = 0;
   int* array = make_array(COUNT);
@@ -107,7 +105,7 @@ UBENCH_EX(Dict, remove) {
 }
 
 UBENCH_EX(Dict, each) {
-  uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+  uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
   size_t i      = 0;
   size_t knum   = 0;

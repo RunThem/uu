@@ -35,19 +35,18 @@
 /***************************************************************************************************
  * Hash function
  **************************************************************************************************/
-#define UU_DICT_HASH_FUNCTION Fnv1a_32
-static inline uint32_t Fnv1a_32(const void* data, int len, uint32_t send) {
-  uint32_t h1           = 0x811c9dc5;
-  const uint8_t* blocks = (const uint8_t*)data;
+inline uint32_t uu_hash_fn_fnv1a(const void* data, uint32_t len, uint32_t send) {
+  uint8_t* blocks = (uint8_t*)data;
+  uint32_t hash   = 0x811c9dc5 ^ (uint32_t)blocks[0] * 0x01000193;
 
   (void)send;
 
-  while (--len >= 0) {
-    h1 ^= (uint32_t)blocks[len];
-    h1 *= 0x01000193;
+  while (--len > 0) {
+    hash ^= (uint32_t)blocks[len];
+    hash *= 0x01000193;
   }
 
-  return h1;
+  return hash;
 }
 
 /***************************************************************************************************
@@ -396,6 +395,7 @@ typedef struct uu_dict_t {
   uint32_t len;
 
   uu_cmp_fn cmp_fn;
+  uu_hash_fn hash_fn;
 
   mtree_mut_t buckets;
   mtree_mut_t obuckets;
@@ -473,7 +473,7 @@ static void __uu_dict_rehash(uu_dict_mut_t self) {
   }
 }
 
-void* __uu_dict_init(uint32_t ksize, uu_cmp_fn cmp_fn) {
+void* __uu_dict_init(uint32_t ksize, uu_cmp_fn cmp_fn, uu_hash_fn hash_fn) {
   uu_dict_mut_t self = NULL;
 
   self = (uu_dict_mut_t)UU_MALLOC(sizeof(uu_dict_t));
@@ -488,6 +488,7 @@ void* __uu_dict_init(uint32_t ksize, uu_cmp_fn cmp_fn) {
 
   self->ksize         = ksize;
   self->cmp_fn        = cmp_fn;
+  self->hash_fn       = hash_fn ? hash_fn : uu_hash_fn_fnv1a;
   self->len           = 0;
   self->iter_node     = NULL;
   self->iter_bucket   = NULL;
@@ -564,7 +565,7 @@ void* __uu_dict_at(void* _self, void* key) {
 
   __uu_dict_rehash(self);
 
-  hash   = UU_DICT_HASH_FUNCTION(key, self->ksize, self->seed);
+  hash   = self->hash_fn(key, self->ksize, self->seed);
   bucket = &self->buckets[hash & self->buckets_mask];
   node   = mtree_at(bucket, hash, key, self->cmp_fn);
 
@@ -590,7 +591,7 @@ int __uu_dict_insert(void* _self, void* key, void* uptr) {
 
   __uu_dict_rehash(self);
 
-  hash = UU_DICT_HASH_FUNCTION(key, self->ksize, self->seed);
+  hash = self->hash_fn(key, self->ksize, self->seed);
 
   if (unlikely(self->obuckets) && (hash & self->obuckets_mask) >= self->obuckets_idx) {
     bucket = &self->obuckets[hash & self->obuckets_mask];
@@ -634,7 +635,7 @@ void* __uu_dict_remove(void* _self, void* key) {
 
   __uu_dict_rehash(self);
 
-  hash = UU_DICT_HASH_FUNCTION(key, self->ksize, self->seed);
+  hash = self->hash_fn(key, self->ksize, self->seed);
 
   bucket = &self->buckets[hash & self->buckets_mask];
   node   = mtree_at(bucket, hash, key, self->cmp_fn);
