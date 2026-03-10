@@ -576,6 +576,99 @@ void test_dict_edge_case_operations() {
   printf("pass\n");
 }
 
+void test_dict_cstr_int() {
+  printf("test(dict_cstr_int): ");
+
+  uu_dict(char*, int*) d = uu_dict_init(d, uu_cmp_fn_cstr, uu_hash_fn_cstr);
+
+  // 测试初始化
+  assert(d);
+  assert(uu_dict_is_empty(d));
+  assert(0 == uu_dict_len(d));
+
+  // 测试插入
+  int result = uu_dict_insert(d, "one", (void*)(uintptr_t)1);
+  assert(result);
+  result = uu_dict_insert(d, "two", (void*)(uintptr_t)2);
+  assert(result);
+  result = uu_dict_insert(d, "three", (void*)(uintptr_t)3);
+  assert(result);
+  assert(3 == uu_dict_len(d));
+  assert(!uu_dict_is_empty(d));
+
+  // 测试访问
+  assert((void*)(uintptr_t)1 == uu_dict_at(d, "one"));
+  assert((void*)(uintptr_t)2 == uu_dict_at(d, "two"));
+  assert((void*)(uintptr_t)3 == uu_dict_at(d, "three"));
+  assert(NULL == uu_dict_at(d, "four"));  // 不存在的键
+
+  // 测试重复键插入失败
+  result = uu_dict_insert(d, "one", (void*)(uintptr_t)100);
+  assert(!result);
+  assert((void*)(uintptr_t)1 == uu_dict_at(d, "one"));  // 值不变
+  assert(3 == uu_dict_len(d));
+
+  // 测试删除
+  void* removed = uu_dict_remove(d, "two");
+  assert((void*)(uintptr_t)2 == removed);
+  assert(2 == uu_dict_len(d));
+  assert(NULL == uu_dict_at(d, "two"));
+
+  // 测试删除不存在的键
+  removed = uu_dict_remove(d, "nonexistent");
+  assert(NULL == removed);
+
+  // 测试 each 遍历
+  int count = 0;
+  uu_dict_each(d, key, int*, uptr) {
+    (void)uptr;
+    count++;
+  }
+  assert(2 == count);
+
+  // 测试 each_if 条件遍历
+  count = 0;
+  uu_dict_each_if(d, key, int*, uptr, uptr == (void*)(uintptr_t)1) {
+    (void)uptr;
+    count++;
+  }
+  assert(1 == count);
+
+  // 测试 find_if
+  int* found = uu_dict_find_if(d, key, int*, uptr, uptr == (void*)(uintptr_t)3);
+  assert(found);
+  found = uu_dict_find_if(d, key, int*, uptr, uptr == (void*)(uintptr_t)999);
+  assert(!found);
+
+  // 测试 any_if
+  result = uu_dict_any_if(d, key, int*, uptr, uptr == (void*)(uintptr_t)1);
+  assert(result);
+  result = uu_dict_any_if(d, key, int*, uptr, uptr == (void*)(uintptr_t)999);
+  assert(!result);
+
+  // 测试 all_if
+  result = uu_dict_all_if(d,
+                          key,
+                          int*,
+                          uptr,
+                          uptr == (void*)(uintptr_t)1 || uptr == (void*)(uintptr_t)3);
+  assert(result);
+  result = uu_dict_all_if(d, key, int*, uptr, uptr == (void*)(uintptr_t)1);
+  assert(!result);
+
+  // 测试 clear
+  uu_dict_clear(d);
+  assert(0 == uu_dict_len(d));
+  assert(uu_dict_is_empty(d));
+  assert(NULL == uu_dict_at(d, "one"));
+
+  // 测试 deinit
+  uu_dict_deinit(d);
+  assert(!d);
+
+  printf("pass\n");
+}
+
 void test_dict_memory_operations() {
   printf("test(dict_memory_operations): ");
 
@@ -668,6 +761,9 @@ int main() {
   test_dict_find_if();
   test_dict_any_if();
   test_dict_all_if();
+
+  // 指针类型 Key
+  test_dict_cstr_int();
 
   // 新增的边界条件测试
   printf("\n=== Additional boundary condition tests ===\n");
