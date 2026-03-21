@@ -35,14 +35,15 @@
 /***************************************************************************************************
  * Hash function
  **************************************************************************************************/
-inline uint32_t uu_hash_fn_fnv1a(const void* data, uint32_t len, uint32_t send) {
-  uint8_t* blocks = (uint8_t*)data;
-  uint32_t hash   = 0x811c9dc5 ^ (uint32_t)blocks[0] * 0x01000193;
+inline uint32_t uu_hash_fn_fnv1a(const void* data, uint32_t len, uint32_t seed) {
+  const uint8_t* bytes = (const uint8_t*)data;
+  uint32_t hash        = 0x811c9dc5;
 
-  (void)send;
+  hash ^= seed;
+  hash *= 0x01000193;
 
-  while (--len > 0) {
-    hash ^= (uint32_t)blocks[len];
+  for (uint32_t i = 0; i < len; i++) {
+    hash ^= bytes[i];
     hash *= 0x01000193;
   }
 
