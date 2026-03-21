@@ -11,8 +11,8 @@ ifneq ($(LIBS_MIMALLOC_PATH), )
 	LIBS_MIMALLOC_CFLAGS += -D 'UU_FREE(ptr)=mi_free(ptr)'
 endif
 
-test: test_vec test_dict
-
+test: test_vec test_tree test_dict
+ƒ
 test_vec: uu.c test_vec.c
 	$(CC) $(CFLAGS) -DUU_DICT_CHECK -o $@ $^ $(LIBS_MIMALLOC_CFLAGS)
 	@./$@
