@@ -83,7 +83,7 @@ uu_hash_fn_def(cstr, char*, data, uu_hash_fn_fnv1a(data, strlen(data), 0));
   ({                                                                                               \
     extern void* __uu_vec_init(uint32_t);                                                          \
                                                                                                    \
-    self = (__typeof__(self))__uu_vec_init(sizeof(*self));                                         \
+    self = (__typeof__(self))__uu_vec_init(sizeof(self[0]));                                         \
                                                                                                    \
     self;                                                                                          \
   })
@@ -394,7 +394,7 @@ uu_hash_fn_def(cstr, char*, data, uu_hash_fn_fnv1a(data, strlen(data), 0));
       assert(Idx < Len);                                                                           \
     }                                                                                              \
                                                                                                    \
-    __typeof__(*self) __val__ = *(__typeof__(self))__uu_vec_at((void*)self, _idx);                 \
+    __typeof__(self[0]) __val__ = *(__typeof__(self))__uu_vec_at((void*)self, _idx);                 \
                                                                                                    \
     __uu_vec_remove((void*)self, _idx);                                                            \
                                                                                                    \
@@ -438,7 +438,7 @@ uu_hash_fn_def(cstr, char*, data, uu_hash_fn_fnv1a(data, strlen(data), 0));
     (void)__uu_vec_each((void*)self, 1);                                                           \
   };                                                                                               \
                                                                                                    \
-  for (__typeof__(*self) it = {0}; ({                                                              \
+  for (__typeof__(self[0]) it = {0}; ({                                                              \
          extern void* __uu_vec_each(void*, int);                                                   \
                                                                                                    \
          __typeof__(self) __ref__ = (__typeof__(self))__uu_vec_each((void*)self, 2);               \
@@ -485,7 +485,7 @@ uu_hash_fn_def(cstr, char*, data, uu_hash_fn_fnv1a(data, strlen(data), 0));
     (void)__uu_vec_each(self, 3);                                                                  \
   };                                                                                               \
                                                                                                    \
-  for (__typeof__(*self) it = {0}; ({                                                              \
+  for (__typeof__(self[0]) it = {0}; ({                                                              \
          extern void* __uu_vec_each(void*, int);                                                   \
                                                                                                    \
          __typeof__(self) __ref__ = (__typeof__(self))__uu_vec_each((void*)self, 4);               \
@@ -627,7 +627,7 @@ uu_hash_fn_def(cstr, char*, data, uu_hash_fn_fnv1a(data, strlen(data), 0));
     (void)__uu_vec_each((void*)self, 1);                                                           \
                                                                                                    \
     __typeof__(self) __mut__ = NULL;                                                               \
-    for (__typeof__(*self) it = {0};                                                               \
+    for (__typeof__(self[0]) it = {0};                                                               \
          (__mut__ = (__typeof__(self))__uu_vec_each((void*)self, 2));) {                           \
       it = *__mut__;                                                                               \
                                                                                                    \
@@ -766,7 +766,7 @@ uu_hash_fn_def(cstr, char*, data, uu_hash_fn_fnv1a(data, strlen(data), 0));
   ({                                                                                               \
     extern void* __uu_tree_init(uint32_t, uu_cmp_fn);                                              \
                                                                                                    \
-    self = (__typeof__(self))__uu_tree_init(sizeof(*self), cmp_fn);                                \
+    self = (__typeof__(self))__uu_tree_init(sizeof(self[0]), cmp_fn);                                \
                                                                                                    \
     self;                                                                                          \
   })
@@ -925,7 +925,7 @@ uu_hash_fn_def(cstr, char*, data, uu_hash_fn_fnv1a(data, strlen(data), 0));
       assert(Self != nil);                                                                         \
     }                                                                                              \
                                                                                                    \
-    __typeof__(*self) __key__ = _key;                                                              \
+    __typeof__(self[0]) __key__ = _key;                                                              \
                                                                                                    \
     __uu_tree_at((void*)self, (void*)&__key__);                                                    \
   })
@@ -961,7 +961,7 @@ uu_hash_fn_def(cstr, char*, data, uu_hash_fn_fnv1a(data, strlen(data), 0));
     }                                                                                              \
                                                                                                    \
     void* __uptr__            = _uptr;                                                             \
-    __typeof__(*self) __key__ = _key;                                                              \
+    __typeof__(self[0]) __key__ = _key;                                                              \
                                                                                                    \
     __uu_tree_insert((void*)self, (void*)&__key__, __uptr__);                                      \
   })
@@ -997,7 +997,7 @@ uu_hash_fn_def(cstr, char*, data, uu_hash_fn_fnv1a(data, strlen(data), 0));
       assert(Self != nil);                                                                         \
     }                                                                                              \
                                                                                                    \
-    __typeof__(*self) __key__ = _key;                                                              \
+    __typeof__(self[0]) __key__ = _key;                                                              \
                                                                                                    \
     __uu_tree_remove((void*)self, (void*)&__key__);                                                \
   })
@@ -1037,7 +1037,7 @@ uu_hash_fn_def(cstr, char*, data, uu_hash_fn_fnv1a(data, strlen(data), 0));
     (void)__uu_tree_each((void*)self, !0, NULL);                                                   \
   }                                                                                                \
                                                                                                    \
-  for (__typeof__(*self) key = {0}, *__key__ = &key; __key__; __key__ = NULL)                      \
+  for (__typeof__(self[0]) key = {0}, *__key__ = &key; __key__; __key__ = NULL)                      \
     for (type uptr = NULL; ({                                                                      \
            extern int __uu_tree_each(void*, int, void* [2]);                                       \
                                                                                                    \
@@ -1195,7 +1195,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
       assert(CmpFn != nil);                                                                        \
     }                                                                                              \
                                                                                                    \
-    self = (__typeof__(self))__uu_dict_init(sizeof(*self), cmp_fn, hash_fn);                       \
+    self = (__typeof__(self))__uu_dict_init(sizeof(self[0]), cmp_fn, hash_fn);                       \
                                                                                                    \
     self;                                                                                          \
   })
@@ -1366,7 +1366,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
       assert(Self != nil);                                                                         \
     }                                                                                              \
                                                                                                    \
-    __typeof__(*self) __key__ = _key;                                                              \
+    __typeof__(self[0]) __key__ = _key;                                                              \
                                                                                                    \
     __uu_dict_at((void*)self, (void*)&__key__);                                                    \
   })
@@ -1415,7 +1415,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
     }                                                                                              \
                                                                                                    \
     void* __uptr__            = _uptr;                                                             \
-    __typeof__(*self) __key__ = _key;                                                              \
+    __typeof__(self[0]) __key__ = _key;                                                              \
                                                                                                    \
     __uu_dict_insert((void*)self, (void*)&__key__, __uptr__);                                      \
   })
@@ -1460,7 +1460,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
       assert(Self != nil);                                                                         \
     }                                                                                              \
                                                                                                    \
-    __typeof__(*self) __key__ = _key;                                                              \
+    __typeof__(self[0]) __key__ = _key;                                                              \
                                                                                                    \
     __uu_dict_remove((void*)self, (void*)&__key__);                                                \
   })
@@ -1504,7 +1504,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
     (void)__uu_dict_each((void*)self, !0, NULL);                                                   \
   }                                                                                                \
                                                                                                    \
-  for (__typeof__(*self) key = {0}, *__key__ = &key; __key__; __key__ = NULL)                      \
+  for (__typeof__(self[0]) key = {0}, *__key__ = &key; __key__; __key__ = NULL)                      \
     for (type uptr = NULL; ({                                                                      \
            extern int __uu_dict_each(void*, int, void* [2]);                                       \
                                                                                                    \
