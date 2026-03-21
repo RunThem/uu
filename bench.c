@@ -140,4 +140,122 @@ UBENCH_EX(Dict, each) {
   uu_dict_deinit(d);
 }
 
+/***************************************************************************************************
+ * Tree benchmarks
+ **************************************************************************************************/
+UBENCH_EX(Tree, at) {
+  uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+  size_t i   = 0;
+  int* array = make_array(COUNT);
+
+  for (i = 0; i < COUNT; i++) {
+    uu_tree_insert(t, array[i], (void*)(intptr_t)array[i]);
+  }
+
+  UBENCH_DO_BENCHMARK() {
+    shuffle(array, COUNT);
+
+    UBENCH_DO_BENCHMARK_BLOCK({
+      for (i = 0; i < COUNT; i++) {
+        uu_tree_at(t, array[i]);
+      }
+    });
+  }
+
+  UBENCH_DO_NOTHING(&i);
+
+  free(array);
+
+  uu_tree_deinit(t);
+}
+
+UBENCH_EX(Tree, insert) {
+  uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+  size_t i   = 0;
+  int* array = make_array(COUNT);
+
+  UBENCH_DO_BENCHMARK() {
+    shuffle(array, COUNT);
+
+    UBENCH_DO_BENCHMARK_BLOCK({
+      for (i = 0; i < COUNT; i++) {
+        uu_tree_insert(t, array[i], (void*)(intptr_t)array[i]);
+      }
+    });
+
+    uu_tree_clear(t);
+  }
+
+  UBENCH_DO_NOTHING(&i);
+
+  free(array);
+
+  uu_tree_deinit(t);
+}
+
+UBENCH_EX(Tree, remove) {
+  uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+  size_t i   = 0;
+  int* array = make_array(COUNT);
+
+  UBENCH_DO_BENCHMARK() {
+    for (i = 0; i < COUNT; i++) {
+      uu_tree_insert(t, i, (void*)(intptr_t)i);
+    }
+
+    shuffle(array, COUNT);
+
+    UBENCH_DO_BENCHMARK_BLOCK({
+      for (i = 0; i < COUNT; i++) {
+        uu_tree_remove(t, array[i]);
+      }
+    });
+  }
+
+  UBENCH_DO_NOTHING(&i);
+
+  free(array);
+
+  uu_tree_deinit(t);
+}
+
+UBENCH_EX(Tree, each) {
+  uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+  size_t i      = 0;
+  size_t knum   = 0;
+  size_t vnum   = 0;
+  size_t result = (COUNT - 1) * COUNT / 2;
+  int* array    = make_array(COUNT);
+
+  for (i = 0; i < COUNT; i++) {
+    uu_tree_insert(t, array[i], (void*)(intptr_t)array[i]);
+  }
+
+  UBENCH_DO_BENCHMARK() {
+    knum = 0;
+    vnum = 0;
+
+    UBENCH_DO_BENCHMARK_BLOCK({
+      uu_tree_each(t, key, int*, val) {
+        knum += key;
+        vnum += (size_t)(uintptr_t)val;
+      };
+    });
+
+    assert(knum == result);
+    assert(vnum == result);
+  }
+
+  UBENCH_DO_NOTHING(&knum);
+  UBENCH_DO_NOTHING(&vnum);
+
+  free(array);
+
+  uu_tree_deinit(t);
+}
+
 UBENCH_MAIN();
