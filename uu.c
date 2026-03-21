@@ -704,6 +704,24 @@ static inline int __uu_dict_tree_insert(uu_node_mut_t* root, uu_node_mut_t n, uu
   return !0;
 }
 
+static inline uu_node_mut_t __uu_dict_find(uu_dict_mut_t self,
+                                           void* key,
+                                           uu_node_mut_t** out_bucket,
+                                           uint32_t* out_hash) {
+  uint32_t hash         = self->hash_fn(key, self->ksize, self->seed);
+  uu_node_mut_t* bucket = &self->buckets[hash & self->buckets_mask];
+  uu_node_mut_t node    = __uu_dict_tree_at(bucket, hash, key, self->cmp_fn);
+
+  if (unlikely(!node && self->obuckets) && ((hash & self->obuckets_mask) >= self->obuckets_idx)) {
+    bucket = &self->obuckets[hash & self->obuckets_mask];
+    node   = __uu_dict_tree_at(bucket, hash, key, self->cmp_fn);
+  }
+
+  if (out_bucket) *out_bucket = bucket;
+  if (out_hash) *out_hash = hash;
+  return node;
+}
+
 static void __uu_dict_resize(uu_dict_mut_t self) {
   uu_node_mut_t* buckets = NULL;
   uint32_t buckets_len   = self->buckets_mask + 1;
@@ -852,23 +870,14 @@ uint32_t __uu_dict_len(void* _self) {
 }
 
 void* __uu_dict_at(void* _self, void* key) {
-  uu_dict_mut_t self    = (uu_dict_mut_t)_self;
-  uu_node_mut_t* bucket = NULL;
-  uu_node_mut_t node    = NULL;
-  uint32_t hash         = 0;
+  uu_dict_mut_t self  = (uu_dict_mut_t)_self;
+  uu_node_mut_t node  = NULL;
 
   uu_chk_if(self->len == 0, NULL);
 
   __uu_dict_rehash(self);
 
-  hash   = self->hash_fn(key, self->ksize, self->seed);
-  bucket = &self->buckets[hash & self->buckets_mask];
-  node   = __uu_dict_tree_at(bucket, hash, key, self->cmp_fn);
-
-  if (unlikely(!node && self->obuckets) && ((hash & self->obuckets_mask) >= self->obuckets_idx)) {
-    bucket = &self->obuckets[hash & self->obuckets_mask];
-    node   = __uu_dict_tree_at(bucket, hash, key, self->cmp_fn);
-  }
+  node = __uu_dict_find(self, key, NULL, NULL);
 
   uu_end_if(!node, err0);
 
@@ -887,12 +896,7 @@ int __uu_dict_insert(void* _self, void* key, void* uptr) {
 
   __uu_dict_rehash(self);
 
-  hash = self->hash_fn(key, self->ksize, self->seed);
-
-  if (unlikely(self->obuckets) && (hash & self->obuckets_mask) >= self->obuckets_idx) {
-    bucket = &self->obuckets[hash & self->obuckets_mask];
-    node   = __uu_dict_tree_at(bucket, hash, key, self->cmp_fn);
-  }
+  node = __uu_dict_find(self, key, &bucket, &hash);
 
   uu_end_if(node, err0);
 
@@ -925,21 +929,12 @@ void* __uu_dict_remove(void* _self, void* key) {
   uu_node_mut_t* bucket = NULL;
   uu_node_mut_t node    = NULL;
   void* uptr            = NULL;
-  uint32_t hash         = 0;
 
   uu_chk_if(self->len == 0, NULL);
 
   __uu_dict_rehash(self);
 
-  hash = self->hash_fn(key, self->ksize, self->seed);
-
-  bucket = &self->buckets[hash & self->buckets_mask];
-  node   = __uu_dict_tree_at(bucket, hash, key, self->cmp_fn);
-
-  if (unlikely(!node && self->obuckets) && ((hash & self->obuckets_mask) >= self->obuckets_idx)) {
-    bucket = &self->obuckets[hash & self->obuckets_mask];
-    node   = __uu_dict_tree_at(bucket, hash, key, self->cmp_fn);
-  }
+  node = __uu_dict_find(self, key, &bucket, NULL);
 
   uu_end_if(!node, err0);
 
