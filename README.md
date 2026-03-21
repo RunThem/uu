@@ -1,31 +1,25 @@
 # UU — U Utils Library
 
-UU 是一个 C 语言通用容器库，提供三种基础数据结构：
-
-- **`uu_vec`** - 类型安全的动态数组（向量）
-- **`uu_dict`** - 基于哈希表和 AVL 树实现的字典（键值对映射）
-- **`uu_tree`** - AVL 树实现的有序映射
-
 UU is a C generic container library providing three fundamental data structures:
+UU 是一个 C 语言通用容器库, 提供三种基础数据结构:
 
-- **`uu_vec`** - Type-safe dynamic array (vector)
-- **`uu_dict`** - Dictionary (key-value map) based on hash table and AVL tree
-- **`uu_tree`** - Ordered map implemented with AVL tree
+- **`uu_vec`** - Type-safe dynamic array (vector) / 类型安全的动态数组(向量)
+- **`uu_dict`** - Dictionary (key-value map) based on hash table and AVL tree / 基于哈希表和 AVL 树实现的字典(键值对映射)
+- **`uu_tree`** - Ordered map implemented with AVL tree / AVL 树实现的有序映射
 
 ## Quick Start / 快速开始
 
 ### Compiler Requirements / 编译器要求
 
-- 需支持 GCC 扩展：`__typeof__` 和语句表达式 `({ ... })`
 - Requires GCC extensions: `__typeof__` and statement expressions `({ ... })`
-- 推荐使用 GCC 或 Clang / Recommended: GCC or Clang
+- Recommended: GCC or Clang
 
 ### Build & Test / 构建与测试
 
 ```bash
-make test      # 运行所有测试 / Run all tests
-make bench     # 性能基准测试 / Run benchmarks
-make clean     # 清理 / Clean build artifacts
+make test      # Run all tests / 运行所有测试
+make bench     # Run benchmarks / 性能基准测试
+make clean     # Clean build artifacts / 清理
 ```
 
 ## API Examples / API 示例
@@ -67,7 +61,7 @@ uu_tree_insert(t, 2, "two");
 uu_tree_insert(t, 1, "one");
 
 uu_tree_each(t, k, v) {
-  printf("%d -> %s\n", k, v);  // 有序遍历 / Ordered traversal
+  printf("%d -> %s\n", k, v);  // Ordered traversal / 有序遍历
 }
 
 uu_tree_deinit(t);
@@ -76,17 +70,16 @@ uu_tree_deinit(t);
 ## Predefined Functions / 预定义函数
 
 ```c
-// 比较函数 / Comparison functions
+// Comparison functions / 比较函数
 uu_cmp_fn_int     // int
 uu_cmp_fn_int64   // int64_t
-uu_cmp_fn_cstr    // char* (字符串/string)
+uu_cmp_fn_cstr    // char*
 
-// 哈希函数 / Hash functions
-uu_hash_fn_cstr   // char* (字符串/string)
+// Hash functions / 哈希函数
+uu_hash_fn_cstr   // char*
 ```
 
 ## License / 许可证
 
 See the `LICENSE` file in this repository.
-
 请参阅仓库中的 `LICENSE` 文件.
