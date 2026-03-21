@@ -520,7 +520,7 @@ int __uu_tree_insert(void* _self, void* key, void* uptr) {
     link = (result < 0) ? &p->l : &p->r;
   }
 
-  node = (uu_node_mut_t)UU_MALLOC(sizeof(uu_node_t));
+  node = (uu_node_mut_t)UU_MALLOC(sizeof(uu_node_t) + self->ksize);
   uu_end_if(unlikely(!node), err0);
 
   node->h    = 1;
