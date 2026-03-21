@@ -739,6 +739,294 @@ uu_hash_fn_def(cstr, char*, data, uu_hash_fn_fnv1a(data, strlen(data), 0));
   } while (0)
 
 /***************************************************************************************************
+ * Tree
+ **************************************************************************************************/
+/**
+ * ::Class Tree<K: fn(K*, K*) -> int, V = void*>
+ */
+#define uu_tree(K, V) __typeof__(K*)
+
+/**
+ * ::Tree<K, V = void*>::init(self, cmp_fn: uu_cmp_fn) -> Self
+ *
+ * ```c
+ * ```
+ */
+#define uu_tree_init(self, cmp_fn)                                                                 \
+  ({                                                                                               \
+    extern void* __uu_tree_init(uint32_t, uu_cmp_fn);                                              \
+                                                                                                   \
+    self = (__typeof__(self))__uu_tree_init(sizeof(*self), cmp_fn);                                \
+                                                                                                   \
+    self;                                                                                          \
+  })
+
+/**
+ * ::Tree<K, V = void*>::clear(self) -> !
+ * ::Tree<K, V = void*>::clear(self, ...) -> !
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+    uu_tree_insert(t, 1, (void*)0x11);
+    assert(1 == uu_tree_len(t));
+
+    uu_tree_clear(t);
+    assert(t);
+    assert(0 == uu_tree_len(t));
+  }
+ * ```
+ */
+#define uu_tree_clear(self, ...)                                                                   \
+  do {                                                                                             \
+    extern void __uu_tree_clear(void*);                                                            \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    uu_tree_each(self, key, void*, uptr) {                                                         \
+      __VA_ARGS__;                                                                                 \
+                                                                                                   \
+      (void)key;                                                                                   \
+      (void)uptr;                                                                                  \
+    };                                                                                             \
+                                                                                                   \
+    __uu_tree_clear((void*)self);                                                                  \
+  } while (0)
+
+/**
+ * ::Tree<K, V = void*>::deinit(self) -> !
+ * ::Tree<K, V = void*>::deinit(self, ...) -> !
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+    uu_tree_deinit(t);
+    assert(!t);
+  }
+ * ```
+ */
+#define uu_tree_deinit(self, ...)                                                                  \
+  do {                                                                                             \
+    extern void __uu_tree_deinit(void*);                                                           \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    uu_tree_each(self, key, void*, uptr) {                                                         \
+      __VA_ARGS__;                                                                                 \
+                                                                                                   \
+      (void)key;                                                                                   \
+      (void)uptr;                                                                                  \
+    };                                                                                             \
+                                                                                                   \
+    __uu_tree_deinit((void*)self);                                                                 \
+                                                                                                   \
+    self = NULL;                                                                                   \
+  } while (0)
+
+#define uu_tree_len(self)                                                                          \
+  ({                                                                                               \
+    extern uint32_t __uu_tree_len(void*);                                                          \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+    __uu_tree_len((void*)self);                                                                    \
+  })
+
+#define uu_tree_is_empty(self)                                                                     \
+  ({                                                                                               \
+    extern uint32_t __uu_tree_len(void*);                                                          \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    0 == __uu_tree_len((void*)self);                                                               \
+  })
+
+#define uu_tree_at(self, _key)                                                                     \
+  ({                                                                                               \
+    extern void* __uu_tree_at(void*, void*);                                                       \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    __typeof__(*self) __key__ = _key;                                                              \
+                                                                                                   \
+    __uu_tree_at((void*)self, (void*)&__key__);                                                    \
+  })
+
+#define uu_tree_insert(self, _key, _uptr)                                                          \
+  ({                                                                                               \
+    extern int __uu_tree_insert(void*, void*, void*);                                              \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    void* __uptr__            = _uptr;                                                             \
+    __typeof__(*self) __key__ = _key;                                                              \
+                                                                                                   \
+    __uu_tree_insert((void*)self, (void*)&__key__, __uptr__);                                      \
+  })
+
+#define uu_tree_remove(self, _key)                                                                 \
+  ({                                                                                               \
+    extern void* __uu_tree_remove(void*, void*);                                                   \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    __typeof__(*self) __key__ = _key;                                                              \
+                                                                                                   \
+    __uu_tree_remove((void*)self, (void*)&__key__);                                                \
+  })
+
+#define uu_tree_each_if(self, key, type, uptr, cond) uu_tree_each(self, key, type, uptr) if (cond)
+#define uu_tree_each(self, key, type, uptr)                                                        \
+  {                                                                                                \
+    extern int __uu_tree_each(void*, int, void* [2]);                                              \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    (void)__uu_tree_each((void*)self, !0, NULL);                                                   \
+  }                                                                                                \
+                                                                                                   \
+  for (__typeof__(*self) key = {0}, *__key__ = &key; __key__; __key__ = NULL)                      \
+    for (type uptr = NULL; ({                                                                      \
+           extern int __uu_tree_each(void*, int, void* [2]);                                       \
+                                                                                                   \
+           __typeof__(self) __out__[2] = {0};                                                      \
+           int __result__              = __uu_tree_each((void*)self, !!0, (void**)&__out__);       \
+                                                                                                   \
+           if (__result__) {                                                                       \
+             key  = *__out__[0];                                                                   \
+             uptr = (type)(void*)__out__[1];                                                       \
+           }                                                                                       \
+                                                                                                   \
+           __result__;                                                                             \
+         });)
+
+/**
+ * ::Tree<K, V = void*, U: V>::find_if(self, key, U, uptr, cond) -> U
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+    uu_tree_insert(t, 1, (void*)0x11);
+    uu_tree_insert(t, 2, (void*)0x22);
+    uu_tree_insert(t, 3, (void*)0x33);
+
+    int* uptr = uu_tree_find_if(t, key, int*, uptr, uptr == (int*)(uintptr_t)0x22);
+    assert(uptr == (int*)(uintptr_t)0x22);
+
+    uptr = uu_tree_find_if(t, key, int*, uptr, uptr == (int*)(uintptr_t)0x44);
+    assert(uptr == NULL);
+  }
+ * ```
+ */
+#define uu_tree_find_if(self, key, type, uptr, cond)                                               \
+  ({                                                                                               \
+    type __uptr__ = NULL;                                                                          \
+                                                                                                   \
+    uu_tree_each_if(self, key, type, uptr, cond) {                                                 \
+      __uptr__ = uptr;                                                                             \
+      break;                                                                                       \
+    }                                                                                              \
+                                                                                                   \
+    __uptr__;                                                                                      \
+  })
+
+/**
+ * ::Tree<K, V = void*, U: V>::any_if(self, key, U, uptr, cond) -> bool
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+    uu_tree_insert(t, 1, (void*)0x11);
+    uu_tree_insert(t, 2, (void*)0x22);
+    uu_tree_insert(t, 3, (void*)0x33);
+
+    int result = uu_tree_any_if(t, key, int*, uptr, uptr == (int*)(uintptr_t)0x22);
+    assert(result);
+
+    result = uu_tree_any_if(t, key, int*, uptr, uptr == (int*)(uintptr_t)0x44);
+    assert(!result);
+  }
+ * ```
+ */
+#define uu_tree_any_if(self, key, type, uptr, cond)                                                \
+  ({                                                                                               \
+    int __result__ = !!0;                                                                          \
+                                                                                                   \
+    uu_tree_each_if(self, key, type, uptr, cond) {                                                 \
+      __result__ = !0;                                                                             \
+      break;                                                                                       \
+    }                                                                                              \
+                                                                                                   \
+    __result__;                                                                                    \
+  })
+
+/**
+ * ::Tree<K, V = void*, U: V>::all_if(self, key, U, uptr, cond) -> bool
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+    uu_tree_insert(t, 1, (void*)0x11);
+    uu_tree_insert(t, 2, (void*)0x22);
+    uu_tree_insert(t, 3, (void*)0x33);
+
+    int result = uu_tree_all_if(t, key, int*, uptr, uptr >= (int*)(intptr_t)0x11);
+    assert(result);
+
+    result = uu_tree_all_if(t, key, int*, uptr, uptr > (int*)(intptr_t)0x11);
+    assert(!result);
+  }
+ * ```
+ */
+#define uu_tree_all_if(self, key, type, uptr, cond)                                                \
+  ({                                                                                               \
+    int __result__ = !0;                                                                           \
+                                                                                                   \
+    uu_tree_each_if(self, key, type, uptr, !(cond)) {                                              \
+      __result__ = !!0;                                                                            \
+      break;                                                                                       \
+    }                                                                                              \
+                                                                                                   \
+    __result__;                                                                                    \
+  })
+
+/***************************************************************************************************
  * Dict
  **************************************************************************************************/
 

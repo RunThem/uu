@@ -189,8 +189,13 @@ struct uu_tree_t;
 typedef struct uu_tree_t* uu_tree_mut_t;
 typedef const struct uu_tree_t* uu_tree_ref_t;
 typedef struct uu_tree_t {
-  int len;
+  uint32_t ksize;
+  uint32_t len;
+
+  uu_cmp_fn cmp_fn;
+
   uu_node_mut_t root;
+  uu_node_mut_t iter;
 } uu_tree_t;
 
 #define __lh(n) (n->l ? n->l->h : 0)
@@ -400,30 +405,7 @@ static inline uu_node_mut_t __uu_tree_next(uu_node_mut_t n) {
   return n;
 }
 
-/***************************************************************************************************
- * Dict
- **************************************************************************************************/
-struct uu_dict_t;
-typedef struct uu_dict_t* uu_dict_mut_t;
-typedef const struct uu_dict_t* uu_dict_ref_t;
-typedef struct uu_dict_t {
-  uint32_t ksize;
-  uint32_t len;
-
-  uu_cmp_fn cmp_fn;
-  uu_hash_fn hash_fn;
-
-  uu_node_mut_t* buckets;
-  uu_node_mut_t* obuckets;
-  uu_node_mut_t* ibucket;
-  uu_node_mut_t inode;
-  uint32_t buckets_mask;
-  uint32_t obuckets_mask;
-  uint32_t obuckets_idx;
-  uint32_t seed;
-} uu_dict_t;
-
-static inline uu_node_mut_t __uu_dict_tree_remove_tear(uu_node_mut_t* root, uu_node_mut_t* next) {
+static uu_node_mut_t __uu_tree_remove_tear(uu_node_mut_t* root, uu_node_mut_t* next) {
   uu_node_mut_t n = *next, p;
 
   if (!n) {
@@ -460,6 +442,194 @@ static inline uu_node_mut_t __uu_dict_tree_remove_tear(uu_node_mut_t* root, uu_n
 
   return n;
 }
+
+void* __uu_tree_init(uint32_t ksize, uu_cmp_fn cmp_fn) {
+  uu_tree_mut_t self = NULL;
+
+  self = (uu_tree_mut_t)UU_MALLOC(sizeof(uu_tree_t));
+  uu_end_if(!self, err0);
+
+  self->cmp_fn = cmp_fn;
+  self->len    = 0;
+  self->ksize  = ksize;
+  self->root   = NULL;
+  self->iter   = NULL;
+
+  return self;
+
+err0:
+  return NULL;
+}
+
+void __uu_tree_clear(void* _self) {
+  uu_tree_mut_t self = (uu_tree_mut_t)_self;
+  uu_node_mut_t node = NULL;
+  uu_node_mut_t next = NULL;
+
+  while ((node = __uu_tree_remove_tear(&self->root, &next))) {
+    UU_FREE(node);
+  }
+
+  self->len = 0;
+}
+
+void __uu_tree_deinit(void* _self) {
+  uu_tree_mut_t self = (uu_tree_mut_t)_self;
+
+  __uu_tree_clear(self);
+
+  UU_FREE(self);
+}
+
+uint32_t __uu_tree_len(void* _self) {
+  uu_tree_mut_t self = (uu_tree_mut_t)_self;
+
+  return self->len;
+}
+
+void* __uu_tree_at(void* _self, void* key) {
+  uu_tree_mut_t self = (uu_tree_mut_t)_self;
+  uu_node_mut_t i    = self->root;
+  int result         = 0;
+
+  while (i) {
+    result = self->cmp_fn(key, &i->key[0]);
+    if (!result) {
+      return i->uptr;
+    }
+
+    i = (result < 0) ? i->l : i->r;
+  }
+
+  return NULL;
+}
+
+int __uu_tree_insert(void* _self, void* key, void* uptr) {
+  uu_tree_mut_t self  = (uu_tree_mut_t)_self;
+  uu_node_mut_t* link = &self->root;
+  uu_node_mut_t node  = NULL;
+  uu_node_mut_t p     = NULL;
+  int result          = 0;
+
+  while (link[0]) {
+    p      = link[0];
+    result = self->cmp_fn(key, &p->key[0]);
+    uu_end_if(!result, err0);
+
+    link = (result < 0) ? &p->l : &p->r;
+  }
+
+  node = (uu_node_mut_t)UU_MALLOC(sizeof(uu_node_t));
+  uu_end_if(unlikely(!node), err0);
+
+  node->h    = 1;
+  node->uptr = uptr;
+  node->p    = p;
+  node->l    = NULL;
+  node->r    = NULL;
+  link[0]    = node;
+
+  memcpy(&node->key[0], key, self->ksize);
+
+  __uu_tree_insert_rebalance(&self->root, node);
+
+  self->len++;
+
+  return !0;
+
+err0:
+  return !!0;
+}
+
+void* __uu_tree_remove(void* _self, void* key) {
+  uu_tree_mut_t self           = (uu_tree_mut_t)_self;
+  uu_node_mut_t node           = self->root;
+  uu_node_mut_t rebalance_node = NULL;
+  void* uptr                   = NULL;
+  int result                   = 0;
+
+  while (node) {
+    result = self->cmp_fn(key, &node->key[0]);
+    if (!result) {
+      break;
+    }
+
+    node = (result < 0) ? node->l : node->r;
+  }
+
+  uu_end_if(!node, err0);
+
+  uptr = node->uptr;
+
+  rebalance_node = (node->l && node->r ? __uu_tree_remove_left_and_right :
+                                         __uu_tree_remove_left_or_right)(&self->root, node);
+
+  if (rebalance_node) {
+    __uu_tree_remove_rebalance(&self->root, rebalance_node);
+  }
+
+  UU_FREE(node);
+
+  self->len--;
+
+  return uptr;
+
+err0:
+  return NULL;
+}
+
+int __uu_tree_each(void* _self, int init, void* out[2]) {
+  uu_tree_mut_t self = (uu_tree_mut_t)_self;
+  uu_node_mut_t iter = NULL;
+
+  uu_chk_if(self->len == 0, !!0);
+
+  if (init) {
+    self->iter = NULL;
+    return !0;
+  }
+
+  if (self->iter == NULL) {
+    iter = __uu_tree_first(&self->root);
+  } else {
+    iter = __uu_tree_next(self->iter);
+  }
+
+  uu_end_if(!iter, err0);
+
+  self->iter = iter;
+
+  out[0] = &iter->key[0];
+  out[1] = (void*)iter->uptr;
+
+  return !0;
+
+err0:
+  return !!0;
+}
+
+/***************************************************************************************************
+ * Dict
+ **************************************************************************************************/
+struct uu_dict_t;
+typedef struct uu_dict_t* uu_dict_mut_t;
+typedef const struct uu_dict_t* uu_dict_ref_t;
+typedef struct uu_dict_t {
+  uint32_t ksize;
+  uint32_t len;
+
+  uu_cmp_fn cmp_fn;
+  uu_hash_fn hash_fn;
+
+  uu_node_mut_t* buckets;
+  uu_node_mut_t* obuckets;
+  uu_node_mut_t* ibucket;
+  uu_node_mut_t inode;
+  uint32_t buckets_mask;
+  uint32_t obuckets_mask;
+  uint32_t obuckets_idx;
+  uint32_t seed;
+} uu_dict_t;
 
 static inline uu_node_mut_t
     __uu_dict_tree_at(uu_node_mut_t* root, uint32_t hash, void* key, uu_cmp_fn cmp_fn) {
@@ -576,7 +746,7 @@ static void __uu_dict_rehash(uu_dict_mut_t self) {
       continue;
     }
 
-    while ((node = __uu_dict_tree_remove_tear(obucket, &next))) {
+    while ((node = __uu_tree_remove_tear(obucket, &next))) {
       node->l = node->r = node->p = NULL;
       node->h                     = 1;
 
@@ -641,7 +811,7 @@ void __uu_dict_clear(void* _self) {
   begin = &self->buckets[0];
   end   = &self->buckets[self->buckets_mask + 1];
   for (bucket = begin; bucket != end; bucket++) {
-    while ((node = __uu_dict_tree_remove_tear(bucket, &next))) {
+    while ((node = __uu_tree_remove_tear(bucket, &next))) {
       UU_FREE(node);
     }
   }
@@ -650,7 +820,7 @@ void __uu_dict_clear(void* _self) {
     begin = &self->obuckets[self->obuckets_idx];
     end   = &self->obuckets[self->obuckets_mask + 1];
     for (bucket = begin; bucket != end; bucket++) {
-      while ((node = __uu_dict_tree_remove_tear(bucket, &next))) {
+      while ((node = __uu_tree_remove_tear(bucket, &next))) {
         UU_FREE(node);
       }
     }
