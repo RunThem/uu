@@ -13,15 +13,15 @@ endif
 
 test: test_vec test_tree test_dict
 
-test_vec: uu.c test_vec.c
+test_vec: uu.c uu.h test_vec.c
 	$(CC) $(CFLAGS) -DUU_DICT_CHECK -o $@ $^ $(LIBS_MIMALLOC_CFLAGS)
 	@./$@
 
-test_tree: uu.c test_tree.c
+test_tree: uu.c uu.h test_tree.c
 	$(CC) $(CFLAGS) -DUU_DICT_CHECK -o $@ $^ $(LIBS_MIMALLOC_CFLAGS)
 	@./$@
 
-test_dict: uu.c test_dict.c
+test_dict: uu.c uu.h test_dict.c
 	$(CC) $(CFLAGS) -DUU_DICT_CHECK -o $@ $^ $(LIBS_MIMALLOC_CFLAGS)
 	@./$@
 
