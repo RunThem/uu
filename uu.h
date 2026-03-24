@@ -7,25 +7,53 @@ extern "C" {
 
 #include <assert.h>
 #include <stdint.h>
+#include <string.h>
 
-#define uu_cmp_fn_def(type, x, y, ...)                                                             \
-  int cmp_fn_##type(const void* _##x, const void* _##y) {                                          \
-    type x = *(type*)_##x, y = *(type*)_##y;                                                       \
-                                                                                                   \
-    return __VA_ARGS__;                                                                            \
-  }
-
-typedef int (*uu_cmp_fn)(const void* x, const void* y);
-
-/***************************************************************************************************
- * Memory allocator
- **************************************************************************************************/
 #ifndef UU_MEMORY
 #  include <stdlib.h>
 #  define UU_MALLOC(size)       malloc(size)
 #  define UU_REALLOC(ptr, size) realloc(ptr, size)
 #  define UU_FREE(ptr)          free(ptr)
 #endif
+
+/* clang-format off */
+typedef int      (*uu_cmp_fn)  (const void* x, const void* y);
+typedef uint32_t (*uu_hash_fn) (const void* data, uint32_t len, uint32_t seed);
+
+extern uint32_t uu_hash_fn_fnv1a(const void*, uint32_t, uint32_t);
+
+#define uu_cmp_fn_def(name, type, x, y, ...)                                                       \
+  static inline int uu_cmp_fn_##name(const void* _##x, const void* _##y) {                         \
+    type x = *(type*)_##x;                                                                         \
+    type y = *(type*)_##y;                                                                         \
+                                                                                                   \
+    return __VA_ARGS__;                                                                            \
+  }
+
+#define uu_hash_fn_def(name, type, data, ...)                                                      \
+  static inline uint32_t uu_hash_fn_##name(const void* _##data, uint32_t len, uint32_t seed) {     \
+    type data = *(type*)_##data;                                                                   \
+                                                                                                   \
+    (void)len;                                                                                     \
+    (void)seed;                                                                                    \
+                                                                                                   \
+    return __VA_ARGS__;                                                                            \
+  }
+
+uu_cmp_fn_def(char,   char,     x, y, x - y);
+uu_cmp_fn_def(int,    int,      x, y, x - y);
+uu_cmp_fn_def(int8,   int8_t,   x, y, x - y);
+uu_cmp_fn_def(uint8,  uint8_t,  x, y, x - y);
+uu_cmp_fn_def(int16,  int16_t,  x, y, x - y);
+uu_cmp_fn_def(uint16, uint16_t, x, y, x - y);
+uu_cmp_fn_def(int32,  int32_t,  x, y, x - y);
+uu_cmp_fn_def(uint32, uint32_t, x, y, x - y);
+uu_cmp_fn_def(int64,  int64_t,  x, y, x - y);
+uu_cmp_fn_def(uint64, uint64_t, x, y, x - y);
+
+uu_cmp_fn_def(cstr,  char*, x, y, strcmp(x, y));
+uu_hash_fn_def(cstr, char*, data, uu_hash_fn_fnv1a(data, strlen(data), 0));
+/* clang-format on */
 
 /***************************************************************************************************
  * Vec
@@ -55,7 +83,7 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
   ({                                                                                               \
     extern void* __uu_vec_init(uint32_t);                                                          \
                                                                                                    \
-    self = (__typeof__(self))__uu_vec_init(sizeof(*self));                                         \
+    self = (__typeof__(self))__uu_vec_init(sizeof(self[0]));                                         \
                                                                                                    \
     self;                                                                                          \
   })
@@ -366,7 +394,7 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
       assert(Idx < Len);                                                                           \
     }                                                                                              \
                                                                                                    \
-    __typeof__(*self) __val__ = *(__typeof__(self))__uu_vec_at((void*)self, _idx);                 \
+    __typeof__(self[0]) __val__ = *(__typeof__(self))__uu_vec_at((void*)self, _idx);                 \
                                                                                                    \
     __uu_vec_remove((void*)self, _idx);                                                            \
                                                                                                    \
@@ -410,7 +438,7 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
     (void)__uu_vec_each((void*)self, 1);                                                           \
   };                                                                                               \
                                                                                                    \
-  for (__typeof__(*self) it = {0}; ({                                                              \
+  for (__typeof__(self[0]) it = {0}; ({                                                              \
          extern void* __uu_vec_each(void*, int);                                                   \
                                                                                                    \
          __typeof__(self) __ref__ = (__typeof__(self))__uu_vec_each((void*)self, 2);               \
@@ -457,7 +485,7 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
     (void)__uu_vec_each(self, 3);                                                                  \
   };                                                                                               \
                                                                                                    \
-  for (__typeof__(*self) it = {0}; ({                                                              \
+  for (__typeof__(self[0]) it = {0}; ({                                                              \
          extern void* __uu_vec_each(void*, int);                                                   \
                                                                                                    \
          __typeof__(self) __ref__ = (__typeof__(self))__uu_vec_each((void*)self, 4);               \
@@ -599,7 +627,7 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
     (void)__uu_vec_each((void*)self, 1);                                                           \
                                                                                                    \
     __typeof__(self) __mut__ = NULL;                                                               \
-    for (__typeof__(*self) it = {0};                                                               \
+    for (__typeof__(self[0]) it = {0};                                                               \
          (__mut__ = (__typeof__(self))__uu_vec_each((void*)self, 2));) {                           \
       it = *__mut__;                                                                               \
                                                                                                    \
@@ -686,7 +714,7 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
     uu_vec_insert_tail(v, 3);  // {2, 1, 4, 3}
     assert(4 == uu_vec_len(v));
 
-    uu_vec_sort(v, cmp_fn_int);
+    uu_vec_sort(v, uu_cmp_fn_int);
     assert(4 == uu_vec_len(v));
 
     assert(1 == uu_vec_at(v, 0));
@@ -711,6 +739,413 @@ typedef int (*uu_cmp_fn)(const void* x, const void* y);
   } while (0)
 
 /***************************************************************************************************
+ * Tree
+ **************************************************************************************************/
+/**
+ * ::Class Tree<K: fn(K*, K*) -> int, V = void*>
+ */
+#define uu_tree(K, V) __typeof__(K*)
+
+/**
+ * ::Tree<K, V = void*>::init(self, cmp_fn: uu_cmp_fn) -> Self
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+    assert(t);
+  }
+  {
+    uu_tree(int, int*) t = NULL;
+
+    t = uu_tree_init(t, uu_cmp_fn_int);
+    assert(t);
+  }
+ * ```
+ */
+#define uu_tree_init(self, cmp_fn)                                                                 \
+  ({                                                                                               \
+    extern void* __uu_tree_init(uint32_t, uu_cmp_fn);                                              \
+                                                                                                   \
+    self = (__typeof__(self))__uu_tree_init(sizeof(self[0]), cmp_fn);                                \
+                                                                                                   \
+    self;                                                                                          \
+  })
+
+/**
+ * ::Tree<K, V = void*>::clear(self) -> !
+ * ::Tree<K, V = void*>::clear(self, ...) -> !
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+    uu_tree_insert(t, 1, (void*)0x11);
+    assert(1 == uu_tree_len(t));
+
+    uu_tree_clear(t);
+    assert(t);
+    assert(0 == uu_tree_len(t));
+  }
+ * ```
+ */
+#define uu_tree_clear(self, ...)                                                                   \
+  do {                                                                                             \
+    extern void __uu_tree_clear(void*);                                                            \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    uu_tree_each(self, key, void*, uptr) {                                                         \
+      __VA_ARGS__;                                                                                 \
+                                                                                                   \
+      (void)key;                                                                                   \
+      (void)uptr;                                                                                  \
+    };                                                                                             \
+                                                                                                   \
+    __uu_tree_clear((void*)self);                                                                  \
+  } while (0)
+
+/**
+ * ::Tree<K, V = void*>::deinit(self) -> !
+ * ::Tree<K, V = void*>::deinit(self, ...) -> !
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+    uu_tree_deinit(t);
+    assert(!t);
+  }
+ * ```
+ */
+#define uu_tree_deinit(self, ...)                                                                  \
+  do {                                                                                             \
+    extern void __uu_tree_deinit(void*);                                                           \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    uu_tree_each(self, key, void*, uptr) {                                                         \
+      __VA_ARGS__;                                                                                 \
+                                                                                                   \
+      (void)key;                                                                                   \
+      (void)uptr;                                                                                  \
+    };                                                                                             \
+                                                                                                   \
+    __uu_tree_deinit((void*)self);                                                                 \
+                                                                                                   \
+    self = NULL;                                                                                   \
+  } while (0)
+
+/**
+ * ::Tree<K, V = void*>::len(self) -> uint32_t
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+    assert(0 == uu_tree_len(t));
+
+    uu_tree_insert(t, 1, (void*)0x11);
+    assert(1 == uu_tree_len(t));
+
+    uu_tree_insert(t, 2, (void*)0x22);
+    assert(2 == uu_tree_len(t));
+  }
+ * ```
+ */
+#define uu_tree_len(self)                                                                          \
+  ({                                                                                               \
+    extern uint32_t __uu_tree_len(void*);                                                          \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+    __uu_tree_len((void*)self);                                                                    \
+  })
+
+/**
+ * ::Tree<K, V = void*>::is_empty(self) -> bool
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+    assert(uu_tree_is_empty(t));
+
+    uu_tree_insert(t, 1, (void*)0x11);
+    assert(!uu_tree_is_empty(t));
+  }
+ * ```
+ */
+#define uu_tree_is_empty(self)                                                                     \
+  ({                                                                                               \
+    extern uint32_t __uu_tree_len(void*);                                                          \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    0 == __uu_tree_len((void*)self);                                                               \
+  })
+
+/**
+ * ::Tree<K, V = void*>::at(self, key: K) -> V
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+    uu_tree_insert(t, 1, (void*)0x11);
+    uu_tree_insert(t, 2, (void*)0x22);
+    uu_tree_insert(t, 3, (void*)0x33);
+
+    assert((void*)0x11 == uu_tree_at(t, 1));
+    assert((void*)0x22 == uu_tree_at(t, 2));
+    assert((void*)0x33 == uu_tree_at(t, 3));
+    assert(NULL == uu_tree_at(t, 4));
+  }
+ * ```
+ */
+#define uu_tree_at(self, _key)                                                                     \
+  ({                                                                                               \
+    extern void* __uu_tree_at(void*, void*);                                                       \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    __typeof__(self[0]) __key__ = _key;                                                              \
+                                                                                                   \
+    __uu_tree_at((void*)self, (void*)&__key__);                                                    \
+  })
+
+/**
+ * ::Tree<K, V = void*>::insert(self, key: K, uptr: V) -> bool
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+    int result = uu_tree_insert(t, 1, (void*)0x11);
+    assert(result);
+
+    result = uu_tree_insert(t, 2, (void*)0x22);
+    assert(result);
+
+    result = uu_tree_insert(t, 1, (void*)0x11);
+    assert(!result);  // key already exists
+
+    assert(2 == uu_tree_len(t));
+  }
+ * ```
+ */
+#define uu_tree_insert(self, _key, _uptr)                                                          \
+  ({                                                                                               \
+    extern int __uu_tree_insert(void*, void*, void*);                                              \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    void* __uptr__            = _uptr;                                                             \
+    __typeof__(self[0]) __key__ = _key;                                                              \
+                                                                                                   \
+    __uu_tree_insert((void*)self, (void*)&__key__, __uptr__);                                      \
+  })
+
+/**
+ * ::Tree<K, V = void*>::remove(self, key: K) -> V
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+    uu_tree_insert(t, 1, (void*)0x11);
+    uu_tree_insert(t, 2, (void*)0x22);
+    uu_tree_insert(t, 3, (void*)0x33);
+
+    void* result = uu_tree_remove(t, 2);
+    assert(result == (void*)0x22);
+
+    result = uu_tree_remove(t, 2);
+    assert(result == NULL);  // key not found
+
+    assert(2 == uu_tree_len(t));
+  }
+ * ```
+ */
+#define uu_tree_remove(self, _key)                                                                 \
+  ({                                                                                               \
+    extern void* __uu_tree_remove(void*, void*);                                                   \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    __typeof__(self[0]) __key__ = _key;                                                              \
+                                                                                                   \
+    __uu_tree_remove((void*)self, (void*)&__key__);                                                \
+  })
+
+/**
+ * ::Tree<K, V = void*, U: V>::each(self, key, U, uptr) -> Iter<K, U>
+ * ::Tree<K, V = void*, U: V>::each_if(self, key, U, uptr, cond) -> Iter<K, U>
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+    uu_tree_insert(t, 1, (void*)0x11);
+    uu_tree_insert(t, 2, (void*)0x22);
+    uu_tree_insert(t, 3, (void*)0x33);
+
+    int cnt = 0;
+    uu_tree_each(t, key, int*, uptr) {
+      cnt++;
+    }
+
+    assert(cnt == uu_tree_len(t));
+  }
+ * ```
+ */
+#define uu_tree_each_if(self, key, type, uptr, cond) uu_tree_each(self, key, type, uptr) if (cond)
+#define uu_tree_each(self, key, type, uptr)                                                        \
+  {                                                                                                \
+    extern int __uu_tree_each(void*, int, void* [2]);                                              \
+                                                                                                   \
+    {                                                                                              \
+      __typeof__(self) Self = self;                                                                \
+      void* nil             = NULL;                                                                \
+      assert(Self != nil);                                                                         \
+    }                                                                                              \
+                                                                                                   \
+    (void)__uu_tree_each((void*)self, !0, NULL);                                                   \
+  }                                                                                                \
+                                                                                                   \
+  for (__typeof__(self[0]) key = {0}, *__key__ = &key; __key__; __key__ = NULL)                      \
+    for (type uptr = NULL; ({                                                                      \
+           extern int __uu_tree_each(void*, int, void* [2]);                                       \
+                                                                                                   \
+           __typeof__(self) __out__[2] = {0};                                                      \
+           int __result__              = __uu_tree_each((void*)self, !!0, (void**)&__out__);       \
+                                                                                                   \
+           if (__result__) {                                                                       \
+             key  = *__out__[0];                                                                   \
+             uptr = (type)(void*)__out__[1];                                                       \
+           }                                                                                       \
+                                                                                                   \
+           __result__;                                                                             \
+         });)
+
+/**
+ * ::Tree<K, V = void*, U: V>::find_if(self, key, U, uptr, cond) -> U
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+    uu_tree_insert(t, 1, (void*)0x11);
+    uu_tree_insert(t, 2, (void*)0x22);
+    uu_tree_insert(t, 3, (void*)0x33);
+
+    int* uptr = uu_tree_find_if(t, key, int*, uptr, uptr == (int*)(uintptr_t)0x22);
+    assert(uptr == (int*)(uintptr_t)0x22);
+
+    uptr = uu_tree_find_if(t, key, int*, uptr, uptr == (int*)(uintptr_t)0x44);
+    assert(uptr == NULL);
+  }
+ * ```
+ */
+#define uu_tree_find_if(self, key, type, uptr, cond)                                               \
+  ({                                                                                               \
+    type __uptr__ = NULL;                                                                          \
+                                                                                                   \
+    uu_tree_each_if(self, key, type, uptr, cond) {                                                 \
+      __uptr__ = uptr;                                                                             \
+      break;                                                                                       \
+    }                                                                                              \
+                                                                                                   \
+    __uptr__;                                                                                      \
+  })
+
+/**
+ * ::Tree<K, V = void*, U: V>::any_if(self, key, U, uptr, cond) -> bool
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+    uu_tree_insert(t, 1, (void*)0x11);
+    uu_tree_insert(t, 2, (void*)0x22);
+    uu_tree_insert(t, 3, (void*)0x33);
+
+    int result = uu_tree_any_if(t, key, int*, uptr, uptr == (int*)(uintptr_t)0x22);
+    assert(result);
+
+    result = uu_tree_any_if(t, key, int*, uptr, uptr == (int*)(uintptr_t)0x44);
+    assert(!result);
+  }
+ * ```
+ */
+#define uu_tree_any_if(self, key, type, uptr, cond)                                                \
+  ({                                                                                               \
+    int __result__ = !!0;                                                                          \
+                                                                                                   \
+    uu_tree_each_if(self, key, type, uptr, cond) {                                                 \
+      __result__ = !0;                                                                             \
+      break;                                                                                       \
+    }                                                                                              \
+                                                                                                   \
+    __result__;                                                                                    \
+  })
+
+/**
+ * ::Tree<K, V = void*, U: V>::all_if(self, key, U, uptr, cond) -> bool
+ *
+ * ```c
+  {
+    uu_tree(int, int*) t = uu_tree_init(t, uu_cmp_fn_int);
+
+    uu_tree_insert(t, 1, (void*)0x11);
+    uu_tree_insert(t, 2, (void*)0x22);
+    uu_tree_insert(t, 3, (void*)0x33);
+
+    int result = uu_tree_all_if(t, key, int*, uptr, uptr >= (int*)(intptr_t)0x11);
+    assert(result);
+
+    result = uu_tree_all_if(t, key, int*, uptr, uptr > (int*)(intptr_t)0x11);
+    assert(!result);
+  }
+ * ```
+ */
+#define uu_tree_all_if(self, key, type, uptr, cond)                                                \
+  ({                                                                                               \
+    int __result__ = !0;                                                                           \
+                                                                                                   \
+    uu_tree_each_if(self, key, type, uptr, !(cond)) {                                              \
+      __result__ = !!0;                                                                            \
+      break;                                                                                       \
+    }                                                                                              \
+                                                                                                   \
+    __result__;                                                                                    \
+  })
+
+/***************************************************************************************************
  * Dict
  **************************************************************************************************/
 
@@ -731,24 +1166,28 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
 #define uu_dict(K, V) __typeof__(K*)
 
 /**
- * ::Dict<K, V = void*>::init(self, cmp_fn: uu_cmp_fn) -> Self
+ * ::Dict<K, V = void*>::init(self, cmp_fn: uu_cmp_fn, hash_fn: uu_hash_fn) -> Self
  *
  * ```c
   {
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+    uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
     assert(d);
   }
   {
     uu_dict(int, int*) d = NULL;
 
-    d = uu_dict_init(d, cmp_fn_int);
+    d = uu_dict_init(d, uu_cmp_fn_int, NULL);
+    assert(d);
+  }
+  {
+    uu_dict(char*, int*) d = uu_dict_init(d, uu_cmp_fn_cstr, uu_hash_fn_cstr);
     assert(d);
   }
  * ```
  */
-#define uu_dict_init(self, cmp_fn)                                                                 \
+#define uu_dict_init(self, cmp_fn, hash_fn)                                                        \
   ({                                                                                               \
-    extern void* __uu_dict_init(uint32_t, uu_cmp_fn);                                              \
+    extern void* __uu_dict_init(uint32_t, uu_cmp_fn, uu_hash_fn);                                  \
                                                                                                    \
     {                                                                                              \
       uu_cmp_fn CmpFn = cmp_fn;                                                                    \
@@ -756,7 +1195,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
       assert(CmpFn != nil);                                                                        \
     }                                                                                              \
                                                                                                    \
-    self = (__typeof__(self))__uu_dict_init(sizeof(*self), cmp_fn);                                \
+    self = (__typeof__(self))__uu_dict_init(sizeof(self[0]), cmp_fn, hash_fn);                       \
                                                                                                    \
     self;                                                                                          \
   })
@@ -767,7 +1206,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
  *
  * ```c
   {
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+    uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
     assert(d);
 
     uu_dict_insert(d, 1, (void*)0x11);
@@ -805,7 +1244,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
  *
  * ```c
   {
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+    uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
     assert(d);
 
     uu_dict_deinit(d);
@@ -840,7 +1279,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
  *
  * ```c
   {
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+    uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
     uu_dict_insert(d, 1, (void*)0x11);
     uu_dict_insert(d, 2, (void*)0x22);
@@ -869,7 +1308,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
  *
  * ```c
   {
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+    uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
     assert(uu_dict_is_empty(d));
 
@@ -901,7 +1340,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
  *
  * ```c
   {
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+    uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
     uu_dict_insert(d, 1, (void*)0x11);
     uu_dict_insert(d, 2, (void*)0x22);
@@ -927,7 +1366,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
       assert(Self != nil);                                                                         \
     }                                                                                              \
                                                                                                    \
-    __typeof__(*self) __key__ = _key;                                                              \
+    __typeof__(self[0]) __key__ = _key;                                                              \
                                                                                                    \
     __uu_dict_at((void*)self, (void*)&__key__);                                                    \
   })
@@ -937,7 +1376,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
  *
  * ```c
   {
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+    uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
     int result = 0;
 
@@ -976,7 +1415,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
     }                                                                                              \
                                                                                                    \
     void* __uptr__            = _uptr;                                                             \
-    __typeof__(*self) __key__ = _key;                                                              \
+    __typeof__(self[0]) __key__ = _key;                                                              \
                                                                                                    \
     __uu_dict_insert((void*)self, (void*)&__key__, __uptr__);                                      \
   })
@@ -986,7 +1425,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
  *
  * ```c
   {
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+    uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
     uu_dict_insert(d, 1, (void*)0x11);
     uu_dict_insert(d, 2, (void*)0x22);
@@ -1021,7 +1460,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
       assert(Self != nil);                                                                         \
     }                                                                                              \
                                                                                                    \
-    __typeof__(*self) __key__ = _key;                                                              \
+    __typeof__(self[0]) __key__ = _key;                                                              \
                                                                                                    \
     __uu_dict_remove((void*)self, (void*)&__key__);                                                \
   })
@@ -1032,7 +1471,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
  *
  * ```c
   {
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+    uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
     uu_dict_insert(d, 1, (void*)0x11);
     uu_dict_insert(d, 2, (void*)0x22);
@@ -1065,7 +1504,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
     (void)__uu_dict_each((void*)self, !0, NULL);                                                   \
   }                                                                                                \
                                                                                                    \
-  for (__typeof__(*self) key = {0}, *__key__ = &key; __key__; __key__ = NULL)                      \
+  for (__typeof__(self[0]) key = {0}, *__key__ = &key; __key__; __key__ = NULL)                      \
     for (type uptr = NULL; ({                                                                      \
            extern int __uu_dict_each(void*, int, void* [2]);                                       \
                                                                                                    \
@@ -1085,7 +1524,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
  *
  * ```c
   {
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+    uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
     uu_dict_insert(d, 1, (void*)0x11);
     uu_dict_insert(d, 2, (void*)0x22);
@@ -1096,7 +1535,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
     int* uptr = uu_dict_find_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)0x33);
     assert(uptr == (int*)(uintptr_t)0x33);
 
-    int* uptr = uu_dict_find_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)0x66);
+    uptr = uu_dict_find_if(d, key, int*, uptr, uptr == (int*)(uintptr_t)0x66);
     assert(uptr == NULL);
   }
  * ```
@@ -1118,7 +1557,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
  *
  * ```c
   {
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+    uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
     uu_dict_insert(d, 1, (void*)0x11);
     uu_dict_insert(d, 2, (void*)0x22);
@@ -1151,7 +1590,7 @@ typedef void (*uu_dict_dump_fn)(const void* key, const void* uptr);
  *
  * ```c
   {
-    uu_dict(int, int*) d = uu_dict_init(d, cmp_fn_int);
+    uu_dict(int, int*) d = uu_dict_init(d, uu_cmp_fn_int, NULL);
 
     uu_dict_insert(d, 1, (void*)0x11);
     uu_dict_insert(d, 2, (void*)0x22);

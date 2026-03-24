@@ -6,8 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-uu_cmp_fn_def(int, x, y, x - y);
-
 void test_vec_init() {
   printf("test(uu_vec_init): ");
 
@@ -499,7 +497,7 @@ void test_vec_sort() {
   assert(5 == uu_vec_at(v, 0));  // first element is 5
   assert(1 == uu_vec_at(v, 4));  // last element is 1
 
-  uu_vec_sort(v, cmp_fn_int);
+  uu_vec_sort(v, uu_cmp_fn_int);
 
   assert(5 == uu_vec_len(v));
   assert(1 == uu_vec_at(v, 0));  // first element is now 1
@@ -521,7 +519,7 @@ void test_vec_sort() {
   uu_vec_insert_tail(v, 5);
   uu_vec_insert_tail(v, 3);
 
-  uu_vec_sort(v, cmp_fn_int);
+  uu_vec_sort(v, uu_cmp_fn_int);
 
   // Check if sorted properly: 1, 1, 2, 3, 3, 4, 5, 5, 6, 9
   assert(1 == uu_vec_at(v, 0));
@@ -815,11 +813,11 @@ void test_vec_boundary_conditions() {
   // ===========================================================================
 
   // 7.1 空向量排序
-  uu_vec_sort(v, cmp_fn_int);  // 不应崩溃
+  uu_vec_sort(v, uu_cmp_fn_int);  // 不应崩溃
 
   // 7.2 单元素向量排序
   uu_vec_insert_tail(v, 42);
-  uu_vec_sort(v, cmp_fn_int);
+  uu_vec_sort(v, uu_cmp_fn_int);
   assert(1 == uu_vec_len(v));
   assert(42 == uu_vec_at(v, 0));
 
@@ -830,7 +828,7 @@ void test_vec_boundary_conditions() {
   uu_vec_insert_tail(v, 3);
   uu_vec_insert_tail(v, 4);
   uu_vec_insert_tail(v, 5);
-  uu_vec_sort(v, cmp_fn_int);
+  uu_vec_sort(v, uu_cmp_fn_int);
   assert(1 == uu_vec_at(v, 0));
   assert(5 == uu_vec_at(v, 4));
 
@@ -841,7 +839,7 @@ void test_vec_boundary_conditions() {
   uu_vec_insert_tail(v, 3);
   uu_vec_insert_tail(v, 2);
   uu_vec_insert_tail(v, 1);
-  uu_vec_sort(v, cmp_fn_int);
+  uu_vec_sort(v, uu_cmp_fn_int);
   assert(1 == uu_vec_at(v, 0));
   assert(5 == uu_vec_at(v, 4));
 
@@ -851,7 +849,7 @@ void test_vec_boundary_conditions() {
   uu_vec_insert_tail(v, 7);
   uu_vec_insert_tail(v, 7);
   uu_vec_insert_tail(v, 7);
-  uu_vec_sort(v, cmp_fn_int);
+  uu_vec_sort(v, uu_cmp_fn_int);
   assert(4 == uu_vec_len(v));
   for (int i = 0; i < 4; i++) {
     assert(7 == uu_vec_at(v, i));

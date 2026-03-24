@@ -149,7 +149,8 @@ build/
 CMakeLists.txt
 compile_commands.json
 
-test
+test_vec
+test_dict
 bench
 
 perf.data
